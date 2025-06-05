@@ -1,0 +1,64 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="180" fill="#F7FAFC" />
+  
+  <!-- Brain outline -->
+  <path d="M200 100
+           C240 100, 280 130, 280 180
+           C280 200, 270 220, 250 230
+           C260 240, 260 260, 250 270
+           C240 280, 220 280, 200 270
+           C180 280, 160 280, 150 270
+           C140 260, 140 240, 150 230
+           C130 220, 120 200, 120 180
+           C120 130, 160 100, 200 100Z" 
+           fill="none" stroke="#805AD5" stroke-width="5" />
+  
+  <!-- Brain details -->
+  <path d="M200 100
+           C220 120, 230 130, 250 130
+           C245 150, 230 165, 210 170"
+           fill="none" stroke="#805AD5" stroke-width="3" />
+  
+  <path d="M200 100
+           C180 120, 170 130, 150 130
+           C155 150, 170 165, 190 170"
+           fill="none" stroke="#805AD5" stroke-width="3" />
+  
+  <path d="M200 170
+           C220 170, 240 175, 250 190
+           C240 200, 230 205, 200 205
+           C170 205, 160 200, 150 190
+           C160 175, 180 170, 200 170Z"
+           fill="none" stroke="#805AD5" stroke-width="3" />
+  
+  <path d="M200 205
+           C220 205, 240 220, 240 240
+           C230 250, 215 255, 200 245
+           C185 255, 170 250, 160 240
+           C160 220, 180 205, 200 205Z"
+           fill="none" stroke="#805AD5" stroke-width="3" />
+  
+  <!-- Glow effect -->
+  <circle cx="200" cy="200" r="100" fill="#B794F4" opacity="0.2">
+    <animate attributeName="r" values="95;100;95" dur="4s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.1;0.3;0.1" dur="4s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Awareness dots -->
+  <circle cx="200" cy="170" r="8" fill="#B794F4">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="2s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="170" cy="200" r="8" fill="#B794F4">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="3s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="230" cy="200" r="8" fill="#B794F4">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="2.5s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="200" cy="230" r="8" fill="#B794F4">
+    <animate attributeName="opacity" values="0.6;1;0.6" dur="3.5s" repeatCount="indefinite" />
+  </circle>
+</svg> 

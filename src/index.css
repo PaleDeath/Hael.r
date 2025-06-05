@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@100..900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+}
+
+section {
+  scroll-snap-align: start;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+.transition-opacity {
+  transition: opacity 1s ease-in-out;
+}
+
+.scroll-text {
+  transition: opacity 10s ease-in-out;
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 2s ease-in-out forwards;
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeIn 1s forwards;
+  animation-delay: 1s;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.blur-lg {
+  filter: blur(20px);
+  transition: filter 1s ease-in-out;
+}
+
+.pointer-events-none {
+  pointer-events: none;
+}
+
+.rotated-text-container {
+  position: absolute;
+  left: 0;
+  top: 80%;
+  transform: translateY(-50%) rotate(-90deg);
+  transform-origin: left top;
+}
+
+.rotated-text {
+  white-space: nowrap;
+  font-size: 16px;
+  line-height: 1.5;
+  color: #000;
+  max-width: 100%;
+  text-align: center;
+}
+
+.brain-model {
+  will-change: transform;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+  bottom: 0;
+  width: 100%;
+  background: #f5f5f0;
+}
+
+.marquee-text {
+  display: inline-block;
+  animation: marquee 30s linear infinite;
+}
+
+.blend-difference {
+  mix-blend-mode: difference;
+}
+
+@media (min-width: 1280px) {
+  .text-96px {
+    font-size: 80px;
+  }
+
+  .text-20px {
+    font-size: 18px;
+  }
+}

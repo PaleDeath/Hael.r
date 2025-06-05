@@ -1,0 +1,36 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="180" fill="#EBF4FF" />
+  
+  <!-- Moon -->
+  <path d="M260 140
+           A70 70 0 0 1 190 210
+           A70 70 0 0 0 260 140Z" 
+           fill="#667EEA" />
+  
+  <!-- Stars -->
+  <circle cx="140" cy="120" r="5" fill="#A3BFFA">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="170" cy="180" r="4" fill="#A3BFFA">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="4s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="110" cy="170" r="3" fill="#A3BFFA">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="5s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="200" cy="110" r="4" fill="#A3BFFA">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="3.5s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="90" cy="130" r="3" fill="#A3BFFA">
+    <animate attributeName="opacity" values="0.3;1;0.3" dur="4.5s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Zzz's -->
+  <text x="190" y="250" font-family="Arial" font-weight="bold" font-size="24" fill="#4C51BF">Z</text>
+  <text x="215" y="230" font-family="Arial" font-weight="bold" font-size="36" fill="#4C51BF">Z</text>
+  <text x="250" y="210" font-family="Arial" font-weight="bold" font-size="48" fill="#4C51BF">Z</text>
+</svg> 

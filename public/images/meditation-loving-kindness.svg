@@ -1,0 +1,51 @@
+<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="180" fill="#FEEBC8" />
+  
+  <!-- Heart -->
+  <path d="M200 240
+           C250 180, 300 180, 300 220
+           C300 280, 200 320, 200 320
+           C200 320, 100 280, 100 220
+           C100 180, 150 180, 200 240Z"
+           fill="#F56565" />
+  
+  <!-- Radiating waves -->
+  <circle cx="200" cy="220" r="40" stroke="#FBD38D" stroke-width="4" fill="none" opacity="0.6">
+    <animate attributeName="r" values="40;70;40" dur="6s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.7;0.3;0.7" dur="6s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="200" cy="220" r="60" stroke="#F6AD55" stroke-width="3" fill="none" opacity="0.5">
+    <animate attributeName="r" values="60;90;60" dur="6s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.6;0.2;0.6" dur="6s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="200" cy="220" r="80" stroke="#ED8936" stroke-width="2" fill="none" opacity="0.4">
+    <animate attributeName="r" values="80;110;80" dur="6s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.5;0.1;0.5" dur="6s" repeatCount="indefinite" />
+  </circle>
+  
+  <circle cx="200" cy="220" r="100" stroke="#DD6B20" stroke-width="1" fill="none" opacity="0.3">
+    <animate attributeName="r" values="100;130;100" dur="6s" repeatCount="indefinite" />
+    <animate attributeName="opacity" values="0.4;0;0.4" dur="6s" repeatCount="indefinite" />
+  </circle>
+  
+  <!-- Small stylized people - representing connection to others -->
+  <circle cx="130" cy="120" r="12" fill="#F56565" />
+  <path d="M130 135 L130 170 M120 145 L140 145 M125 170 L110 200 M135 170 L150 200" 
+    stroke="#F56565" stroke-width="4" stroke-linecap="round" />
+    
+  <circle cx="270" cy="120" r="12" fill="#F56565" />
+  <path d="M270 135 L270 170 M260 145 L280 145 M265 170 L250 200 M275 170 L290 200" 
+    stroke="#F56565" stroke-width="4" stroke-linecap="round" />
+    
+  <circle cx="200" cy="100" r="12" fill="#F56565" />
+  <path d="M200 115 L200 150 M190 125 L210 125 M195 150 L180 180 M205 150 L220 180" 
+    stroke="#F56565" stroke-width="4" stroke-linecap="round" />
+  
+  <!-- Gentle glow around heart -->
+  <circle cx="200" cy="220" r="60" fill="#FEB2B2" opacity="0.3">
+    <animate attributeName="opacity" values="0.2;0.4;0.2" dur="3s" repeatCount="indefinite" />
+  </circle>
+</svg> 
