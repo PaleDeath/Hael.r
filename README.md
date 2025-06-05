@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![Hael.r Logo](https://via.placeholder.com/200x100/1e40af/ffffff?text=Hael.r) <!-- Replace with actual logo -->
-
 **A comprehensive mental health assessment and wellness platform built with modern web technologies**
 
 [🚀 Live Demo](#) • [📖 Documentation](#) • [🐛 Report Bug](#) • [✨ Request Feature](#)
@@ -191,23 +189,6 @@ Additional endpoints for mood logging, meditation progress, and session access a
 
 ---
 
-## 🙏 Acknowledgments
-
-### 🛠 Technologies & Tools
-
-Built with React, MongoDB, OpenAI, Three.js, Tailwind CSS, and more.
-
-### 🌈 Design Inspiration
-
-Inspired by WCAG standards and wellness-focused design practices.
-
-### 💬 Special Thanks
-
-* Mental health professionals
-* Beta testers
-* Open source community ❤️
-
----
 
 ## 💙 Supporting Mental Health
 
@@ -221,10 +202,4 @@ Hael.r is committed to promoting mental well-being through accessible tech. If y
 
 ---
 
-<div align="center">
-Made with ❤️ for mental health and wellness  
-<a href="#">⬆ Back to Top</a>
-</div>
-
----
 
