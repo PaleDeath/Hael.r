@@ -1,7 +1,3 @@
-Here’s a clean, professional, and **optimized** version of your GitHub README for **🧠 Hael.r - Mental Health & Wellness Platform**. It’s designed for clarity, markdown best practices, and aesthetics to impress visitors and collaborators alike:
-
----
-
 # 🧠 Hael.r – Mental Health & Wellness Platform
 
 <div align="center">
@@ -75,7 +71,6 @@ Here’s a clean, professional, and **optimized** version of your GitHub README 
 | Three.js          | 0.166.1 | 3D Graphics        |
 | React Three Fiber | 8.18.0  | Three.js Renderer  |
 | GSAP              | 3.12.5  | Animations         |
-| Lenis             | 1.0.42  | Smooth Scrolling   |
 | Howler.js         | 2.2.4   | Audio              |
 | React Router      | 6.29.0  | Routing            |
 | Recharts          | 2.15.2  | Charts             |
@@ -88,15 +83,10 @@ Here’s a clean, professional, and **optimized** version of your GitHub README 
 | Node.js    | —       | Runtime          |
 | Express.js | 4.18.2  | Server Framework |
 | TypeScript | 5.3.3   | Type Safety      |
-| MongoDB    | —       | Database         |
-| Mongoose   | 8.0.3   | ODM              |
-| JWT        | 9.0.2   | Auth             |
-| Bcrypt     | 5.1.1   | Password Hashing |
-| OpenAI API | 4.24.1  | AI Features      |
 | CORS       | 2.8.5   | Security         |
 
 > 🛠 Dev Tools: ESLint, Nodemon, Git
-> 🌐 Hosting: Netlify (frontend), Render/Railway (backend)
+> 🌐 Hosting: Render/Railway (frontend and backend)
 
 ---
 
@@ -122,10 +112,6 @@ cp server/.env.example server/.env
 # Run frontend (localhost:5173)
 npm run dev
 
-# Run backend (localhost:3000)
-cd server && npm run dev
-```
-
 ---
 
 ## 📦 Installation
@@ -134,7 +120,6 @@ cd server && npm run dev
 
 * Node.js ≥ 18.x
 * npm ≥ 8.x
-* MongoDB ≥ 5.x or MongoDB Atlas
 * Git
 
 ### Frontend `.env` Example
@@ -156,27 +141,15 @@ VITE_APP_NAME=Hael.r
 VITE_ENVIRONMENT=development
 ```
 
-### Backend: `server/.env`
-
-```env
-PORT=3000
-MONGODB_URI=your-mongodb-uri
-JWT_SECRET=your-super-secret
-CORS_ORIGIN=http://localhost:5173
-SESSION_SECRET=your-session-secret
-BCRYPT_ROUNDS=12
-```
-
 ---
 
 ## 💻 Usage
 
 ### Run the App
 
-Start both servers and navigate to:
+Start server and navigate to:
 
 * Frontend: `http://localhost:5173`
-* Backend: `http://localhost:3000`
 
 ### Key Features
 
@@ -185,10 +158,6 @@ Start both servers and navigate to:
 * **Meditation:** Choose session → Track progress → Improve wellness
 
 ---
-
-## 🎨 Screenshots
-
-> *(Replace with actual image links)*
 
 * 🧠 **Homepage with 3D Brain**
 * 📊 **Mental Health Assessment**
@@ -259,4 +228,3 @@ Made with ❤️ for mental health and wellness
 
 ---
 
-Let me know if you'd like to turn this into a styled GitHub Pages landing page or add badges, GitHub Actions, or versioning sections.
