@@ -187,8 +187,10 @@ Additional endpoints for mood logging, meditation progress, and session access a
 
 ---
 
+### Contributors
+Thanks to these amazing people ✨  
+<a href="https://github.com/PaleDeath"><img src="https://avatars.githubusercontent.com/u/1234567?v=4" width="50px" /></a>
 
-Great catch — the crisis resources you've included are **mostly US-based** and **not directly applicable to India**. Here's how you can make the crisis support section more relevant for Indian users:
 
 ---
 
