@@ -188,16 +188,34 @@ Additional endpoints for mood logging, meditation progress, and session access a
 ---
 
 
-## 💙 Supporting Mental Health
-
-Hael.r is committed to promoting mental well-being through accessible tech. If you or someone you know needs help, reach out:
-
-🚨 **Crisis Resources:**
-
-* 📞 National Suicide Prevention Lifeline: 988
-* 📱 Crisis Text Line: Text **HOME** to **741741**
-* 🌐 [International Crisis Centers](https://www.iasp.info/resources/Crisis_Centres/)
+Great catch — the crisis resources you've included are **mostly US-based** and **not directly applicable to India**. Here's how you can make the crisis support section more relevant for Indian users:
 
 ---
+
+## 💙 Supporting Mental Health
+
+Hael.r is committed to promoting mental well-being and making mental health resources accessible. If you or someone you know is struggling, please reach out to a professional or local crisis support service.
+
+### 🚨 Crisis Resources in India:
+
+* **iCall (TISS Mental Health Helpline)**
+  Toll-Free: 9152987821
+  Website: [https://icallhelpline.org](https://icallhelpline.org)
+
+* **AASRA (Suicide Prevention)**
+  Helpline: +91-9820466726
+  Website: [http://www.aasra.info](http://www.aasra.info)
+
+* **Vandrevala Foundation Helpline**
+  24x7 Helpline: 1860 266 2345 / 1800 233 3330
+  Website: [http://www.vandrevalafoundation.com](http://www.vandrevalafoundation.com)
+
+* **Sumaitri (Delhi-based Emotional Support)**
+  Helpline: +91-11-23389090
+  Website: [http://www.sumaitri.net](http://www.sumaitri.net)
+
+---
+
+
 
 
