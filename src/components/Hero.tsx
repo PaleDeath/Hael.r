@@ -25,9 +25,9 @@ export const Hero: React.FC<WithClassName> = ({ className = '' }) => {
         
         {/* Second info box - hidden on mobile, shown on right for larger screens */}
         <div className="hidden sm:block absolute top-0 right-0 transform -translate-y-1/2 p-4 animate-text">
-          <span className="block text-right mb-2 text-xs md:text-sm lg:text-base">More than an AI</span>
+          <span className="block text-right mb-2 text-xs md:text-sm lg:text-base">Remembers you</span>
           <div className="border-2 border-black p-4 text-xs md:text-sm lg:text-base tracking-tight">
-            Comprehensive mental health <br/> companion crafted to assist you in <br /> managing stress, anxiety,<br /> depression, and other mental<br /> health challenges.
+            Come back whenever <br/> to check on your past mental health <br /> history, track your mood<br /> and meditate with Hael.r<br /> all in one place.
           </div>
         </div>
       </div>

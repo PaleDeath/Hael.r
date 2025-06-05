@@ -18,7 +18,6 @@ import QuizPage from './components/mental-health/QuizPage';
 import AssessmentHistoryPage from './components/mental-health/AssessmentHistoryPage';
 import MoodTracker from './components/mental-health/mood/MoodTracker';
 import MeditationPage from './components/mental-health/meditation/MeditationPage';
-import CommunityForum from './components/mental-health/community/CommunityForum';
 import CustomCursor from './components/cursor/CustomCursor';
 import { SoundProvider, useSoundManager } from './components/sound/SoundManager';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
@@ -311,12 +310,6 @@ const App: React.FC = () => {
               <div className="bg-[#F5F5F0]">
                 <Navbar />
                 <MeditationPage />
-              </div>
-            } />
-            <Route path="/community" element={
-              <div className="bg-[#F5F5F0]">
-                <Navbar />
-                <CommunityForum />
               </div>
             } />
           </Routes>

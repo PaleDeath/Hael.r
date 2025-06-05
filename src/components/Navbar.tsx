@@ -94,7 +94,7 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
                 { path: '/assessment-history', label: 'History', hasNotification: savedAssessments.length > 0 },
                 { path: '/mood-tracker', label: 'Mood' },
                 { path: '/meditation', label: 'Meditation' },
-                { path: '/community', label: 'Community' }
+                // { path: '/community', label: 'Community' }
               ].map((item) => (
                 <Link
                   key={item.path}
@@ -157,7 +157,7 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
                 { path: '/assessment-history', label: 'history.', hasNotification: savedAssessments.length > 0 },
                 { path: '/mood-tracker', label: 'mood.' },
                 { path: '/meditation', label: 'meditation.' },
-                { path: '/community', label: 'community.' }
+                // { path: '/community', label: 'community.' }
               ].map((item) => (
                 <li key={item.path}>
                   <Link 
