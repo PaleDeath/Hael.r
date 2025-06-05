@@ -45,13 +45,6 @@
 * Smooth transitions using GSAP + Lenis
 * Fully responsive UI with high-quality audio (Howler.js)
 
-### 🔐 Secure & Accessible
-
-* JWT authentication & bcrypt password hashing
-* Anonymous mode available
-* PWA support & offline functionality
-* WCAG-compliant for accessibility
-
 ---
 
 ## 🛠️ Tech Stack
