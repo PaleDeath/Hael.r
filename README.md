@@ -187,13 +187,6 @@ Additional endpoints for mood logging, meditation progress, and session access a
 
 ---
 
-### Contributors
-Thanks to these amazing people ✨  
-<a href="https://github.com/PaleDeath"><img src="https://avatars.githubusercontent.com/u/1234567?v=4" width="50px" /></a>
-
-
----
-
 ## 💙 Supporting Mental Health
 
 Hael.r is committed to promoting mental well-being and making mental health resources accessible. If you or someone you know is struggling, please reach out to a professional or local crisis support service.
