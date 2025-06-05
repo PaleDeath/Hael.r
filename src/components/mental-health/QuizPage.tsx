@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { questions as allQuestions } from './questions';
+import { allQuestions } from './questions';
 import { analyzeResponses } from './analyzer';
 import { QuizState, AnalysisResult, Question } from './types';
 import gsap from 'gsap';
@@ -45,10 +45,6 @@ const QuizPage: React.FC = () => {
     100
   );
 
-  // Check if there are any high severity categories
-  const hasCriticalSeverity = result && 
-    Object.values(result.categories).some(category => category.severity === 'high');
-  
   // Identify the most severe category for targeted resources
   const getMostSevereCategory = (): { category: string, severity: 'low' | 'moderate' | 'high' } => {
     if (!result) return { category: 'general', severity: 'low' };
@@ -262,11 +258,6 @@ const QuizPage: React.FC = () => {
               completed: true
             });
             setResult(analysisResult);
-            
-            // Check for critical responses and potential self-harm risk
-            const depressionAnswers = Object.entries(newAnswers)
-              .filter(([questionId]) => questionId.startsWith('dep-'))
-              .map(([, value]) => value);
             
             // Log the assessment for research purposes (in a real app, this would be sent to a backend)
             console.log('Assessment completed:', {

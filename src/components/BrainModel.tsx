@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
+import * as THREE from 'three';
 
 interface BrainModelProps {
   modelPath: string;

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -12,27 +12,28 @@ const api = axios.create({
 
 // Add token to axios requests if available
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
 
 // Handle authentication errors
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
     if (error.response && error.response.status === 401) {
       // Clear local storage and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Consider using useNavigate for SPA navigation if this service is used in React components
+      // window.location.href = '/login'; 
     }
     return Promise.reject(error);
   }

@@ -1,11 +1,11 @@
-import { Question, AnalysisResult, MentalHealthCategory } from './types';
-import { questions } from './questions';
+import { AnalysisResult, MentalHealthCategory } from './types';
+import { allQuestions } from './questions';
 
 const calculateCategoryScore = (
   answers: Record<string, number>,
   category: MentalHealthCategory
 ): number => {
-  const categoryQuestions = questions.filter(q => q.category === category);
+  const categoryQuestions = allQuestions.filter(q => q.category === category);
   const answeredQuestions = categoryQuestions.filter(q => answers[q.id] !== undefined);
   
   // If no questions in this category were answered, return 0
@@ -117,7 +117,7 @@ const getRecommendations = (
     );
     
     // Check if specific depression questions had high scores
-    const depQuestions = questions.filter(q => q.category === 'depression');
+    const depQuestions = allQuestions.filter(q => q.category === 'depression');
     const highScoreDepQuestions = depQuestions.filter(q => answers[q.id] >= 2);
     
     if (highScoreDepQuestions.length > 0) {
@@ -169,8 +169,7 @@ const getPersonalizedAnalysis = (
   categories: Record<MentalHealthCategory, { 
     score: number, 
     severity: 'low' | 'moderate' | 'high' 
-  }>,
-  answers: Record<string, number>
+  }>
 ): string => {
   // Get highest concern areas
   const highSeverityCategories = Object.entries(categories)
@@ -180,17 +179,6 @@ const getPersonalizedAnalysis = (
   const moderateSeverityCategories = Object.entries(categories)
     .filter(([_, data]) => data.severity === 'moderate')
     .map(([category]) => category);
-
-  // Get top score category
-  let topCategory: MentalHealthCategory = 'anxiety';
-  let topScore = 0;
-  
-  Object.entries(categories).forEach(([category, data]) => {
-    if (data.score > topScore) {
-      topScore = data.score;
-      topCategory = category as MentalHealthCategory;
-    }
-  });
 
   // Generate personalized analysis
   let analysis = "";
@@ -278,11 +266,42 @@ export const analyzeResponses = (answers: Record<string, number>): AnalysisResul
   });
 
   // Generate personalized analysis
-  const overallAnalysis = getPersonalizedAnalysis(categories, answers);
+  const overallAnalysis = getPersonalizedAnalysis(categories);
 
   return {
     categories,
     overallAnalysis,
     recommendations: getRecommendations(categories, answers)
   };
-}; 
+};
+
+export function getOverallRiskLevel(
+  categories: Record<string, { score: number; severity: 'low' | 'moderate' | 'high' }>,
+  thresholds: { high: number; moderate: number } = { high: 2, moderate: 1 } // Default thresholds
+): 'low' | 'moderate' | 'high' {
+  const highRiskCount = Object.values(categories).filter(cat => cat.severity === 'high').length;
+  const moderateRiskCount = Object.values(categories).filter(cat => cat.severity === 'moderate').length;
+
+  // More flexible risk assessment
+  if (highRiskCount >= thresholds.high || (highRiskCount >= 1 && moderateRiskCount >= thresholds.high + 1)) {
+    return 'high';
+  }
+  if (highRiskCount >= thresholds.moderate || moderateRiskCount >= thresholds.high) { // if 1 high risk or 2 moderate risk
+    return 'moderate';
+  }
+  return 'low';
+}
+
+// Function to find the category with the highest score
+export function getTopConcern(categories: Record<string, { score: number }>): string | null {
+  let topCategoryName: string | null = null;
+  let maxScore = -1;
+
+  for (const [name, data] of Object.entries(categories)) {
+    if (data.score > maxScore) {
+      maxScore = data.score;
+      topCategoryName = name;
+    }
+  }
+  return topCategoryName;
+} 

@@ -10,7 +10,7 @@ const BrainModel = () => {
   const brainRef = React.useRef<THREE.Group>(null);
   const time = React.useRef(0);
 
-  useFrame((state) => {
+  useFrame((_state) => {
     if (brainRef.current) {
       // Create a pendulum-like movement using sine wave
       time.current += 0.02;

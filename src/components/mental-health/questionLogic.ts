@@ -1,5 +1,5 @@
 import { Question, MentalHealthCategory } from './types';
-import { questions } from './questions';
+import { allQuestions as questions } from './questions';
 
 const determinePriorityCategory = (
   answers: Record<string, number>
@@ -13,7 +13,7 @@ const determinePriorityCategory = (
     social: 0
   }
   Object.entries(answers).forEach(([questionId, value]) => {
-    const question = questions.find(q => q.id === questionId);
+    const question = questions.find((q: Question) => q.id === questionId);
     if (question) {
       categoryScores[question.category] += value;
     }
@@ -29,7 +29,7 @@ const determinePriorityCategory = (
   };
 
   Object.keys(answers).forEach(questionId => {
-    const question = questions.find(q => q.id === questionId);
+    const question = questions.find((q: Question) => q.id === questionId);
     if (question) {
       categoryCounts[question.category]++;
     }
@@ -70,7 +70,7 @@ export const determineNextQuestion = (
   // If we've answered fewer than 2 questions, follow a fixed path to gather baseline data
   if (Object.keys(answers).length < 2) {
     // Return the next question in the sequence
-    const currentIndex = questions.findIndex(q => q.id === currentQuestion.id);
+    const currentIndex = questions.findIndex((q: Question) => q.id === currentQuestion.id);
     return questions[currentIndex + 1];
   }
 
@@ -97,7 +97,7 @@ export const determineNextQuestion = (
   if (uncoveredCategories.length > 0) {
     const targetCategory = uncoveredCategories[0];
     const askedQuestionIds = questionHistory.map(q => q.id);
-    const candidateQuestions = questions.filter(q => 
+    const candidateQuestions = questions.filter((q: Question) => 
       q.category === targetCategory && !askedQuestionIds.includes(q.id)
     );
     
@@ -112,13 +112,13 @@ export const determineNextQuestion = (
   
   // Get all questions in the priority category that haven't been asked yet
   const askedQuestionIds = questionHistory.map(q => q.id);
-  const candidateQuestions = questions.filter(q => 
+  const candidateQuestions = questions.filter((q: Question) => 
     q.category === priorityCategory && !askedQuestionIds.includes(q.id)
   );
 
   // If there are no more questions in the priority category, get questions from any category
   if (candidateQuestions.length === 0) {
-    const remainingQuestions = questions.filter(q => !askedQuestionIds.includes(q.id));
+    const remainingQuestions = questions.filter((q: Question) => !askedQuestionIds.includes(q.id));
     
     if (remainingQuestions.length === 0) {
       // We've asked all questions - return the first one as a fallback

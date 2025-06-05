@@ -21,11 +21,6 @@ interface TrendDataPoint {
   [key: string]: string | number; // Index signature for category scores
 }
 
-interface SeverityDataPoint {
-  severity: string;
-  count: number;
-}
-
 const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
   // Transform the data for trend visualization
   const trendData = useMemo(() => {

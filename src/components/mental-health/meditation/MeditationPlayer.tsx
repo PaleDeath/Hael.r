@@ -101,7 +101,6 @@ const SAMPLE_MEDITATIONS: MeditationExercise[] = [
 
 const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }) => {
   const navigate = useNavigate();
-  const [meditations, setMeditations] = useState<MeditationExercise[]>(SAMPLE_MEDITATIONS);
   const [currentMeditation, setCurrentMeditation] = useState<MeditationExercise | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -122,8 +121,8 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
   ];
 
   const filteredMeditations = selectedCategory === 'all' 
-    ? meditations 
-    : meditations.filter(m => m.category === selectedCategory);
+    ? SAMPLE_MEDITATIONS 
+    : SAMPLE_MEDITATIONS.filter(m => m.category === selectedCategory);
 
   const startMeditation = (meditation: MeditationExercise) => {
     setCurrentMeditation(meditation);
@@ -298,26 +297,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
           </button>
         </div>
         
-        {/* For debugging purposes - remove in production */}
-        {!currentMeditation && (
-          <div className="bg-white rounded-xl shadow-md p-4 mb-6">
-            <h3 className="text-md font-medium mb-2">Debug Tools</h3>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => {
-                  if (onSessionComplete) {
-                    onSessionComplete(5);
-                    console.log('Test update: 5 minutes completed');
-                    alert('Test update triggered: 5 minutes');
-                  }
-                }}
-                className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm"
-              >
-                Test Update Stats
-              </button>
-            </div>
-          </div>
-        )}
+      
         
         {/* Audio element (hidden) */}
         <audio ref={audioRef} className="hidden" />

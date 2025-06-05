@@ -33,7 +33,6 @@ const MeditationPage: React.FC = () => {
           };
           
           setStats(validatedStats);
-          console.log('Loaded meditation stats:', validatedStats);
         } else {
           // Initialize default stats if none exist
           const defaultStats: MeditationStats = { 
@@ -43,7 +42,6 @@ const MeditationPage: React.FC = () => {
           };
           localStorage.setItem('meditationStats', JSON.stringify(defaultStats));
           setStats(defaultStats);
-          console.log('Initialized default meditation stats');
         }
       } catch (error) {
         console.error('Error loading meditation stats:', error);
@@ -66,7 +64,6 @@ const MeditationPage: React.FC = () => {
         try {
           const newStats = JSON.parse(e.newValue) as MeditationStats;
           setStats(newStats);
-          console.log('Updated stats from storage event:', newStats);
         } catch (error) {
           console.error('Error parsing storage event data:', error);
         }
@@ -81,18 +78,13 @@ const MeditationPage: React.FC = () => {
   
   // Function to update stats when a meditation session is completed
   const handleSessionComplete = (minutes: number) => {
-    console.log('[Debug] handleSessionComplete called with minutes:', minutes);
-    
     // Get the latest stats to ensure we have fresh data
     try {
       const savedData = localStorage.getItem('meditationStats');
-      console.log('[Debug] Current saved stats:', savedData);
       
       const currentStats: MeditationStats = savedData 
         ? JSON.parse(savedData) 
         : { completedSessions: 0, totalMinutes: 0, streak: 0 };
-      
-      console.log('[Debug] Parsed current stats:', currentStats);
       
       // Calculate new values
       const newCompletedSessions = Number(currentStats.completedSessions || 0) + 1;
@@ -109,23 +101,14 @@ const MeditationPage: React.FC = () => {
         const lastDate = new Date(lastMeditationDate);
         const hoursDiff = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
         
-        console.log('[Debug] Streak calculation:', {
-          lastMeditationDate,
-          hoursDiff,
-          currentStreak: newStreak
-        });
-        
         if (hoursDiff < 48 && today !== lastMeditationDate) {
           newStreak += 1;
-          console.log('[Debug] Streak increased to:', newStreak);
         } else if (hoursDiff >= 48) {
           newStreak = 1; // Reset streak but count today
-          console.log('[Debug] Streak reset to 1 (gap too long)');
         }
         // If same day, streak stays the same
       } else {
         newStreak = 1; // First time meditating
-        console.log('[Debug] First meditation, streak set to 1');
       }
       
       // Create and save the updated stats
@@ -135,20 +118,14 @@ const MeditationPage: React.FC = () => {
         streak: newStreak
       };
       
-      console.log('[Debug] Saving new stats:', newStats);
-      
       // Save to localStorage
       localStorage.setItem('meditationStats', JSON.stringify(newStats));
       localStorage.setItem('lastMeditationDate', today);
       
       // Update the state
       setStats(newStats);
-      
-      console.log('[Debug] Stats updated successfully:', newStats);
-      alert(`Stats updated! Sessions: ${newCompletedSessions}, Minutes: ${newTotalMinutes}, Streak: ${newStreak}`);
     } catch (error) {
       console.error('[Debug] Error updating meditation stats:', error);
-      alert('Failed to update meditation stats. Check console for details.');
     }
   };
   
@@ -185,32 +162,6 @@ const MeditationPage: React.FC = () => {
               <div className="text-gray-600">Day Streak</div>
             </div>
           </div>
-        </div>
-        
-        {/* Refresh button for debugging */}
-        <div className="flex justify-end mb-4">
-          <button
-            onClick={() => {
-              // Reload stats from localStorage
-              const savedData = localStorage.getItem('meditationStats');
-              if (savedData) {
-                try {
-                  const refreshedStats = JSON.parse(savedData) as MeditationStats;
-                  setStats(refreshedStats);
-                  console.log('Manually refreshed stats:', refreshedStats);
-                  alert('Stats refreshed from localStorage');
-                } catch (error) {
-                  console.error('Error refreshing stats:', error);
-                }
-              }
-            }}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-sm flex items-center"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh Stats
-          </button>
         </div>
         
         {/* Benefits of Meditation */}

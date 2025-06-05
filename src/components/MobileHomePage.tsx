@@ -1,8 +1,6 @@
-import React, { useState, useRef, useEffect, lazy, Suspense } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useRef, useEffect, lazy, Suspense } from 'react';
+import { Link } from 'react-router-dom';
 import gsap from 'gsap';
-import { useSoundManager } from './sound/SoundManager';
-import LogoSVG from '../assets/images/logo.svg';
 import Overlay from './Overlay';
 import useTextAnimation from '../hooks/useTextAnimation';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -24,12 +22,7 @@ const MobileHomePage: React.FC<MobileHomePageProps> = ({
   isFadingOut = false, 
   handleEnter = () => {} 
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [logoError, setLogoError] = useState(false);
-  const navigate = useNavigate();
-  const { playSound } = useSoundManager();
   const logoRef = useRef<HTMLImageElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   
   // Text animation refs for each section
@@ -39,11 +32,6 @@ const MobileHomePage: React.FC<MobileHomePageProps> = ({
   const amygdalaRef = useTextAnimation();
   const neuroRef = useTextAnimation();
   const footerRef = useTextAnimation();
-
-  const handleLogoError = () => {
-    console.error("Failed to load logo image");
-    setLogoError(true);
-  };
 
   useEffect(() => {
     console.log("MobileHomePage mounted");
@@ -60,34 +48,6 @@ const MobileHomePage: React.FC<MobileHomePageProps> = ({
       gsap.killTweensOf(logoRef.current);
     };
   }, [isOverlayVisible]);
-
-  const toggleMenu = () => {
-    if (menuRef.current) {
-      if (!menuOpen) {
-        // Open menu animation
-        gsap.to(menuRef.current, {
-          x: '0%',
-          duration: 0.5,
-          ease: 'power2.out',
-        });
-      } else {
-        // Close menu animation
-        gsap.to(menuRef.current, {
-          x: '100%',
-          duration: 0.5,
-          ease: 'power2.in',
-        });
-      }
-    }
-    
-    playSound('click');
-    setMenuOpen(!menuOpen);
-  };
-
-  const navigateTo = (path: string) => {
-    playSound('click');
-    navigate(path);
-  };
 
   // Show the overlay if it's visible
   if (isOverlayVisible) {

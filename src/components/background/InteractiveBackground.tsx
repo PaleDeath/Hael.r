@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import gsap from 'gsap';
+// import * as THREE from 'three'; // TS6133: 'THREE' is declared but its value is never read.
 
 interface Point {
   x: number;

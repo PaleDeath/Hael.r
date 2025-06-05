@@ -23,20 +23,21 @@ class SoundLibrary {
     this.addSound('ambient', '/sounds/ambient.mp3', { 
       volume: 0.1,
       loop: true,
-      fade: true
     });
   }
 
   private addSound(id: string, url: string, options: {
     volume?: number;
     loop?: boolean;
-    fade?: boolean;
+    autoplay?: boolean;
+    onload?: () => void;
   } = {}) {
     const howl = new Howl({
       src: [url],
-      volume: options.volume || 0.5,
+      volume: options.volume !== undefined ? options.volume : 0.5,
       loop: options.loop || false,
-      fade: options.fade || false
+      autoplay: options.autoplay || false,
+      onload: options.onload,
     });
 
     this.sounds.set(id, { id, howl });

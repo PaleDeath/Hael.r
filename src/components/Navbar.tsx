@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { WithClassName } from '../types/common';
+// import { WithClassName } from '../types/common'; // TS6133: 'WithClassName' is declared but its value is never read.
 
 interface NavbarProps {
   className?: string;
@@ -11,7 +11,7 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [savedAssessments, setSavedAssessments] = useState<any[]>([]);
   const location = useLocation();
-  const isHomePage = location.pathname === '/';
+  // const isHomePage = location.pathname === '/'; // TS6133: 'isHomePage' is declared but its value is never read.
 
   const debounce = (func: Function, delay: number) => {
     let timeoutId: NodeJS.Timeout;

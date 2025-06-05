@@ -1,4 +1,4 @@
-import { Question, MentalHealthCategory } from './types';
+import { Question } from './types';
 
 const createScaleOptions = () => [
   { text: "Not at all", value: 0 },
@@ -23,7 +23,7 @@ const createIntensityOptions = () => [
   { text: "Extremely", value: 4 }
 ];
 
-export const questions: Question[] = [
+export const anxietyQuestions: Question[] = [
   // Anxiety Questions (based on GAD-7)
   {
     id: 'anx-1',
@@ -262,4 +262,15 @@ export const questions: Question[] = [
     weight: 1.5,
     source: 'LSAS'
   },
+];
+
+// Add other specific question arrays here if they exist, e.g.:
+// export const depressionQuestions: Question[] = [...];
+// export const stressQuestions: Question[] = [...];
+
+// Combine all question arrays into one
+export const allQuestions: Question[] = [
+  ...anxietyQuestions,
+  // ...depressionQuestions, // Uncomment if depressionQuestions exists
+  // ...stressQuestions,   // Uncomment if stressQuestions exists
 ]; 
