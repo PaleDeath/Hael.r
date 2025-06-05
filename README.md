@@ -18,9 +18,7 @@
 * [📦 Installation](#-installation)
 * [🔧 Configuration](#-configuration)
 * [💻 Usage](#-usage)
-* [🎨 Screenshots](#-screenshots)
 * [🔌 API Documentation](#-api-documentation)
-* [🙏 Acknowledgments](#-acknowledgments)
 * [💙 Supporting Mental Health](#-supporting-mental-health)
 
 ---
