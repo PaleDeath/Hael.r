@@ -143,26 +143,22 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
     // Start the countdown
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
-      setRemainingTime(prev => {
-        if (prev <= 1) {
-          console.log('Timer reached 0, completing session...');
-          endMeditation(true); // Explicitly pass true for completion
+      setRemainingTime(prevTime => {
+        const newTime = prevTime - 1;
+        if (newTime <= 0) {
+          if (!sessionCompleted) {
+            endMeditation(true);
+          }
           return 0;
         }
-        return prev - 1;
-      });
-      
-      setProgress(prev => {
-        const newProgress = prev + (1 / (meditation.duration * 60)) * 100;
-        const finalProgress = Math.min(newProgress, 100);
-        
-        // If we've reached 100%, complete the session
-        if (finalProgress >= 100 && !sessionCompleted) {
-          console.log('Progress reached 100%, completing session...');
-          endMeditation(true); // Explicitly pass true for completion
+
+        if (currentMeditation) {
+            const totalDurationSeconds = currentMeditation.duration * 60;
+            const elapsedTime = totalDurationSeconds - newTime;
+            const calculatedProgress = (elapsedTime / totalDurationSeconds) * 100;
+            setProgress(Math.min(calculatedProgress, 100));
         }
-        
-        return finalProgress;
+        return newTime;
       });
     }, 1000);
   };
@@ -185,34 +181,34 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
     }
     
     if (currentMeditation && !intervalRef.current) {
+      // Re-apply the same interval logic as in startMeditation
       intervalRef.current = setInterval(() => {
-        setRemainingTime(prev => {
-          if (prev <= 1) {
-            endMeditation(true);
+        setRemainingTime(prevTime => {
+          const newTime = prevTime - 1;
+          if (newTime <= 0) {
+            if (!sessionCompleted) {
+              endMeditation(true);
+            }
             return 0;
           }
-          return prev - 1;
-        });
-        
-        setProgress(prev => {
-          const newProgress = prev + (1 / (currentMeditation.duration * 60)) * 100;
-          return Math.min(newProgress, 100);
+
+          // Ensure currentMeditation is still valid and accessible for duration
+          // This check is important because currentMeditation might change or be cleared
+          // by other actions while the interval is trying to run.
+          const activeMeditation = currentMeditation;
+          if (activeMeditation) {
+              const totalDurationSeconds = activeMeditation.duration * 60;
+              const elapsedTime = totalDurationSeconds - newTime;
+              const calculatedProgress = (elapsedTime / totalDurationSeconds) * 100;
+              setProgress(Math.min(calculatedProgress, 100));
+          }
+          return newTime;
         });
       }, 1000);
     }
   };
 
   const endMeditation = (completed = false) => {
-    console.log(`[Debug] endMeditation called with completed=${completed}`);
-    console.log(`[Debug] Current state:`, {
-      isPlaying,
-      progress,
-      remainingTime,
-      currentMeditation: currentMeditation?.title,
-      hasCallback: !!onSessionComplete,
-      sessionCompleted
-    });
-    
     // Stop all timers and audio
     setIsPlaying(false);
     if (intervalRef.current) {
@@ -230,16 +226,12 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
     
     // Only handle completion if not already completed
     if (shouldMarkComplete && currentMeditation && onSessionComplete && !sessionCompleted) {
-      console.log('[Debug] All conditions met for session completion');
-      console.log('[Debug] Progress:', progress, 'Threshold:', progressThreshold);
-      
       // Set completed first to prevent double-calling
       setSessionCompleted(true);
       
       try {
         // Calculate actual minutes completed based on progress
         const minutesCompleted = Math.ceil((progress / 100) * currentMeditation.duration);
-        console.log(`[Debug] Calling onSessionComplete with ${minutesCompleted} minutes (${progress}% of ${currentMeditation.duration}min)`);
         
         // Call the callback with the actual minutes completed
         onSessionComplete(minutesCompleted);
@@ -247,20 +239,12 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
         // Show completion message
         alert(`Meditation complete! ${minutesCompleted} minutes added to your stats.`);
       } catch (error) {
-        console.error('[Debug] Error in onSessionComplete:', error);
+        console.error('Error in onSessionComplete:', error); // Keep this error for user/dev awareness
         alert('Error updating meditation stats. Please try again.');
       }
-    } else {
-      console.log('[Debug] Session completion conditions not met:', {
-        completed: shouldMarkComplete,
-        hasCurrentMeditation: !!currentMeditation,
-        hasOnSessionComplete: !!onSessionComplete,
-        sessionCompleted,
-        progress
-      });
     }
     
-    setProgress(100);
+    setProgress(100); // Visually fill the progress bar
   };
 
   const formatTime = (seconds: number) => {
@@ -274,9 +258,11 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
       if (audioRef.current) {
         audioRef.current.pause();
+        audioRef.current.currentTime = 0;
       }
     };
   }, []);
