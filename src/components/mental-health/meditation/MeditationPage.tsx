@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+// NOTE: Lenis smooth scroll is initialized globally in App.tsx.
+// ScrollTrigger works with native scroll. If smooth scroll issues arise,
+// initialize Lenis locally and sync with ScrollTrigger.update().
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import gsap from 'gsap';
+import { ScrollTrigger as _ScrollTrigger } from 'gsap/ScrollTrigger';
 import MeditationPlayer from './MeditationPlayer';
 import { useAuth } from '../../../contexts/AuthContext';
 import firebaseMeditationService from '../../../services/firebase.meditation.service';
-import { Loader2, TrendingUp, Clock, Flame, AlertCircle } from 'lucide-react';
+import { Loader2 as _Loader2, TrendingUp, Clock, Flame, AlertCircle } from 'lucide-react';
 
 // Define the meditation stats type for better type safety
 interface LocalMeditationStats {
@@ -65,6 +71,20 @@ const calculateLocalStorageStreak = (sessions: any[]): number => {
 const MeditationPage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+
+  const serifFont = "'Cormorant Garamond', serif";
+  const sansFont = "'DM Sans', sans-serif";
+
+  const pageContentRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const statsContainerRef = useRef<HTMLDivElement>(null);
+  const sessionsNumRef = useRef<HTMLDivElement>(null);
+  const minutesNumRef = useRef<HTMLDivElement>(null);
+  const streakNumRef = useRef<HTMLDivElement>(null);
+  const hasAnimatedStats = useRef(false);
+  const benefitsSectionRef = useRef<HTMLDivElement>(null);
+
   const [stats, setStats] = useState<LocalMeditationStats>({
     completedSessions: 0,
     totalMinutes: 0,
@@ -72,7 +92,18 @@ const MeditationPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  useEffect(() => {
+    const linkId = 'meditation-page-fonts';
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap';
+      document.head.appendChild(link);
+    }
+  }, []);
+
   // Load meditation stats from Firebase with localStorage fallback
   useEffect(() => {
     const loadStats = async () => {
@@ -157,7 +188,142 @@ const MeditationPage: React.FC = () => {
 
     loadStats();
   }, [currentUser]);
-  
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      if (pageContentRef.current) {
+        gsap.from(pageContentRef.current, {
+          opacity: 0,
+          duration: 0.6,
+          ease: 'power2.out'
+        });
+      }
+
+      if (titleRef.current) {
+        const text = titleRef.current.textContent || '';
+        const words = text.split(' ');
+        titleRef.current.innerHTML = words.map(w => `<span class="inline-block" style="font-family: ${serifFont}">${w}&nbsp;</span>`).join('');
+        gsap.from(titleRef.current.querySelectorAll('span'), {
+          y: 30,
+          opacity: 0,
+          duration: 1,
+          stagger: 0.08,
+          ease: 'power3.out'
+        });
+      }
+
+      if (subtitleRef.current) {
+        gsap.from(subtitleRef.current, {
+          y: 20,
+          opacity: 0,
+          duration: 0.8,
+          ease: 'power2.out',
+          delay: 0.5
+        });
+      }
+    }, pageContentRef);
+
+    return () => ctx.revert();
+  }, [serifFont]);
+
+  useEffect(() => {
+    if (loading || hasAnimatedStats.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.from('.stat-card', {
+        y: 40,
+        opacity: 0,
+        duration: 0.7,
+        stagger: 0.12,
+        ease: 'power2.out',
+        scrollTrigger: {
+          trigger: statsContainerRef.current,
+          start: 'top 85%',
+          once: true
+        }
+      });
+
+      const animateNumber = (
+        ref: React.RefObject<HTMLDivElement | null>,
+        targetValue: number,
+        delay: number
+      ) => {
+        if (!ref.current || targetValue === 0) return;
+        const obj = { val: 0 };
+        gsap.to(obj, {
+          val: targetValue,
+          duration: 1.5,
+          delay,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: statsContainerRef.current,
+            start: 'top 85%',
+            once: true
+          },
+          onUpdate: () => {
+            if (ref.current) {
+              ref.current.textContent = String(Math.round(obj.val));
+            }
+          }
+        });
+      };
+
+      animateNumber(sessionsNumRef, stats.completedSessions, 0);
+      animateNumber(minutesNumRef, stats.totalMinutes, 0.2);
+      animateNumber(streakNumRef, stats.streak, 0.4);
+
+      hasAnimatedStats.current = true;
+    }, statsContainerRef);
+
+    return () => ctx.revert();
+  }, [loading, stats]);
+
+  useEffect(() => {
+    if (!benefitsSectionRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const items = benefitsSectionRef.current!.querySelectorAll('.benefit-item');
+
+      items.forEach((item, i) => {
+        const line = item.querySelector('.accent-line');
+        const text = item.querySelector('.benefit-text');
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: item,
+            start: 'top 88%',
+            once: true
+          }
+        });
+
+        if (line) {
+          tl.from(line, {
+            scaleY: 0,
+            transformOrigin: 'top',
+            duration: 0.5,
+            ease: 'power2.out',
+            delay: i * 0.1
+          });
+        }
+
+        if (text) {
+          tl.from(
+            text,
+            {
+              x: -20,
+              opacity: 0,
+              duration: 0.6,
+              ease: 'power2.out'
+            },
+            '-=0.3'
+          );
+        }
+      });
+    }, benefitsSectionRef);
+
+    return () => ctx.revert();
+  }, []);
+
   // Handle session completion with Firebase and localStorage support
   const handleSessionComplete = async (meditationType: 'breathing' | 'body-scan' | 'mindfulness' | 'loving-kindness' | 'custom', duration: number) => {
     try {
@@ -244,137 +410,264 @@ const MeditationPage: React.FC = () => {
   
   // Remove authentication gate - show the component for everyone
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
-      <div className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-[#F5F5F0] relative">
+      <style>{`
+        @keyframes gradientShift {
+          0%, 100% { background: radial-gradient(ellipse at 30% 20%, rgba(184,169,201,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(139,158,139,0.12) 0%, transparent 50%), #F5F0E8; }
+          50% { background: radial-gradient(ellipse at 60% 70%, rgba(201,160,107,0.12) 0%, transparent 50%), radial-gradient(ellipse at 20% 30%, rgba(184,169,201,0.10) 0%, transparent 50%), #F5F0E8; }
+        }
+        @keyframes floatA { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(20px, -30px); } }
+        @keyframes floatB { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-25px, 20px); } }
+        @keyframes floatC { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(15px, 25px); } }
+      `}</style>
+      <svg className="fixed w-0 h-0" aria-hidden="true">
+        <filter id="meditation-grain">
+          <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+        </filter>
+      </svg>
+      <div
+        className="fixed inset-0 z-0 animate-[gradientShift_25s_ease-in-out_infinite]"
+        aria-hidden="true"
+      />
+      <div
+        className="fixed inset-0 z-[1] pointer-events-none opacity-[0.03]"
+        style={{ filter: 'url(#meditation-grain)' }}
+        aria-hidden="true"
+      />
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <div
+          className="absolute rounded-full animate-[floatA_20s_ease-in-out_infinite]"
+          style={{
+            width: 250,
+            height: 250,
+            top: '10%',
+            left: '15%',
+            background: 'radial-gradient(circle, rgba(184,169,201,0.08) 0%, transparent 70%)',
+            filter: 'blur(40px)'
+          }}
+        />
+        <div
+          className="absolute rounded-full animate-[floatB_18s_ease-in-out_infinite_2s]"
+          style={{
+            width: 200,
+            height: 200,
+            top: '60%',
+            right: '10%',
+            background: 'radial-gradient(circle, rgba(139,158,139,0.07) 0%, transparent 70%)',
+            filter: 'blur(40px)'
+          }}
+        />
+        <div
+          className="absolute rounded-full animate-[floatC_22s_ease-in-out_infinite_5s]"
+          style={{
+            width: 180,
+            height: 180,
+            bottom: '15%',
+            left: '40%',
+            background: 'radial-gradient(circle, rgba(201,160,107,0.06) 0%, transparent 70%)',
+            filter: 'blur(40px)'
+          }}
+        />
+        <div
+          className="absolute rounded-full animate-[floatA_25s_ease-in-out_infinite_8s]"
+          style={{
+            width: 160,
+            height: 160,
+            top: '35%',
+            right: '30%',
+            background: 'radial-gradient(circle, rgba(123,157,184,0.06) 0%, transparent 70%)',
+            filter: 'blur(40px)'
+          }}
+        />
+      </div>
+
+      <div ref={pageContentRef} className="max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-4xl font-light font-lexend text-black mb-2">Meditation & Mindfulness</h1>
-            <p className="text-gray-600 font-inter">Find peace and clarity through guided meditation</p>
+            <h1
+              ref={titleRef}
+              style={{ fontFamily: serifFont, letterSpacing: '-0.02em' }}
+              className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-[#2C2C2C] mb-2"
+            >
+              Meditation & Mindfulness
+            </h1>
+            <p
+              ref={subtitleRef}
+              style={{ fontFamily: sansFont }}
+              className="text-base text-[#6B6B6B] mt-1"
+            >
+              Find peace and clarity through guided meditation
+            </p>
           </div>
           <button
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-gray-600 hover:text-black font-inter text-sm transition-colors"
+            className="group flex items-center gap-2 text-[#6B6B6B] hover:text-[#2C2C2C] text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 rounded-lg px-2 py-1 active:scale-[0.97]"
+            style={{ fontFamily: sansFont }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-200"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             Back
           </button>
         </div>
+        <div className="w-16 h-[1px] bg-[#8B9E8B] mt-2 mb-10" />
 
-        {/* Info Banner */}
         {!currentUser && (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+          <div className="bg-white/40 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] rounded-xl p-4 mb-6 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
-              <p className="text-gray-700 font-inter text-sm">
-                You're using local storage for meditation tracking. <button onClick={() => navigate('/auth')} className="text-black underline hover:no-underline">Sign in</button> to sync your data across devices.
+              <AlertCircle className="w-5 h-5 text-[#9B9B9B] flex-shrink-0 mt-0.5" />
+              <p style={{ fontFamily: sansFont }} className="text-[#6B6B6B] text-sm">
+                You&apos;re using local storage for meditation tracking.{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate('/auth')}
+                  className="text-[#2C2C2C] underline decoration-[#8B9E8B] hover:decoration-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 rounded active:scale-[0.98]"
+                >
+                  Sign in
+                </button>{' '}
+                to sync your data across devices.
               </p>
             </div>
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg font-inter text-sm flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <div>{error}</div>
+          <div className="mb-6 p-4 bg-[#C97B6B]/10 border border-[#C97B6B]/20 rounded-xl text-sm flex items-start gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <AlertCircle className="w-5 h-5 text-[#C97B6B] flex-shrink-0 mt-0.5" />
+            <div style={{ fontFamily: sansFont }} className="text-[#8B4B3B]">
+              {error}
+            </div>
           </div>
         )}
-        
-        {/* Meditation Stats */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
-          <h2 className="text-2xl font-light font-lexend text-black mb-6">Your Meditation Journey</h2>
+
+        <div ref={statsContainerRef} className="mb-12">
+          <h2
+            style={{ fontFamily: serifFont }}
+            className="text-xl sm:text-2xl md:text-3xl font-light text-[#2C2C2C] mb-8"
+          >
+            Your Meditation Journey
+          </h2>
           {loading ? (
-            <div className="text-center py-12">
-              <Loader2 className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-4" />
-              <p className="text-gray-500 font-inter text-sm">Loading your meditation stats...</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-[#E8E3DB] rounded-2xl h-48 animate-pulse" />
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 text-center border border-blue-200">
-                <div className="flex items-center justify-center mb-3">
-                  <Clock className="w-8 h-8 text-blue-600" />
+              <div className="stat-card bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] border-t-2 border-t-[#8B9E8B] rounded-2xl p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(0,0,0,0.06)] transition-all duration-300">
+                <Clock className="w-7 h-7 text-[#8B9E8B] mb-4 hover:rotate-[15deg] hover:scale-110 transition-transform duration-300" />
+                <div
+                  ref={sessionsNumRef}
+                  style={{ fontFamily: serifFont }}
+                  className="text-5xl md:text-6xl font-light text-[#2C2C2C] mb-2"
+                >
+                  {stats.completedSessions}
                 </div>
-                <div className="text-4xl font-light font-lexend text-blue-600 mb-2">{stats.completedSessions}</div>
-                <div className="text-gray-700 font-inter text-sm">Sessions Completed</div>
+                <div style={{ fontFamily: sansFont }} className="text-xs uppercase tracking-[0.15em] text-[#9B9B9B]">
+                  Sessions Completed
+                </div>
               </div>
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 text-center border border-purple-200">
-                <div className="flex items-center justify-center mb-3">
-                  <TrendingUp className="w-8 h-8 text-purple-600" />
+
+              <div className="stat-card bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] border-t-2 border-t-[#B8A9C9] rounded-2xl p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(0,0,0,0.06)] transition-all duration-300">
+                <TrendingUp className="w-7 h-7 text-[#B8A9C9] mb-4 hover:rotate-[15deg] hover:scale-110 transition-transform duration-300" />
+                <div
+                  ref={minutesNumRef}
+                  style={{ fontFamily: serifFont }}
+                  className="text-5xl md:text-6xl font-light text-[#2C2C2C] mb-2"
+                >
+                  {stats.totalMinutes}
                 </div>
-                <div className="text-4xl font-light font-lexend text-purple-600 mb-2">{stats.totalMinutes}</div>
-                <div className="text-gray-700 font-inter text-sm">Total Minutes</div>
+                <div style={{ fontFamily: sansFont }} className="text-xs uppercase tracking-[0.15em] text-[#9B9B9B]">
+                  Total Minutes
+                </div>
               </div>
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 text-center border border-orange-200">
-                <div className="flex items-center justify-center mb-3">
-                  <Flame className="w-8 h-8 text-orange-600" />
+
+              <div className="stat-card bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] border-t-2 border-t-[#C9A06B] rounded-2xl p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(0,0,0,0.06)] transition-all duration-300">
+                <Flame className="w-7 h-7 text-[#C9A06B] mb-4 hover:rotate-[15deg] hover:scale-110 transition-transform duration-300" />
+                <div
+                  ref={streakNumRef}
+                  style={{ fontFamily: serifFont }}
+                  className="text-5xl md:text-6xl font-light text-[#2C2C2C] mb-2"
+                >
+                  {stats.streak}
                 </div>
-                <div className="text-4xl font-light font-lexend text-orange-600 mb-2">{stats.streak}</div>
-                <div className="text-gray-700 font-inter text-sm">Day Streak</div>
+                <div style={{ fontFamily: sansFont }} className="text-xs uppercase tracking-[0.15em] text-[#9B9B9B]">
+                  Day Streak
+                </div>
               </div>
             </div>
           )}
         </div>
-        
-        {/* Benefits of Meditation */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
-          <h2 className="text-2xl font-light font-lexend text-black mb-6">Benefits of Regular Meditation</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-start gap-4">
-              <div className="bg-blue-100 rounded-lg p-3 flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium font-lexend text-black mb-1">Reduces Stress</h3>
-                <p className="text-sm text-gray-600 font-inter leading-relaxed">Regular meditation lowers cortisol levels, reducing stress and anxiety.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="bg-purple-100 rounded-lg p-3 flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium font-lexend text-black mb-1">Improves Focus</h3>
-                <p className="text-sm text-gray-600 font-inter leading-relaxed">Meditation strengthens attention and concentration skills.</p>
+
+        <div ref={benefitsSectionRef} className="mb-12">
+          <h2
+            style={{ fontFamily: serifFont }}
+            className="text-xl sm:text-2xl md:text-3xl font-light text-[#2C2C2C] mb-10"
+          >
+            Benefits of Regular Meditation
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
+            <div className="benefit-item flex items-start gap-5">
+              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#8B9E8B]" />
+              <div className="benefit-text">
+                <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
+                  Reduces Stress
+                </h3>
+                <p style={{ fontFamily: sansFont }} className="text-sm text-[#6B6B6B] leading-relaxed">
+                  Regular meditation lowers cortisol levels, reducing stress and anxiety.
+                </p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <div className="bg-green-100 rounded-lg p-3 flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="font-medium font-lexend text-black mb-1">Enhances Emotional Health</h3>
-                <p className="text-sm text-gray-600 font-inter leading-relaxed">Improves self-awareness and promotes emotional well-being.</p>
+
+            <div className="benefit-item flex items-start gap-5">
+              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#B8A9C9]" />
+              <div className="benefit-text">
+                <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
+                  Improves Focus
+                </h3>
+                <p style={{ fontFamily: sansFont }} className="text-sm text-[#6B6B6B] leading-relaxed">
+                  Meditation strengthens attention and concentration skills.
+                </p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <div className="bg-orange-100 rounded-lg p-3 flex-shrink-0">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
+
+            <div className="benefit-item flex items-start gap-5">
+              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#C9A06B]" />
+              <div className="benefit-text">
+                <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
+                  Enhances Emotional Health
+                </h3>
+                <p style={{ fontFamily: sansFont }} className="text-sm text-[#6B6B6B] leading-relaxed">
+                  Improves self-awareness and promotes emotional well-being.
+                </p>
               </div>
-              <div>
-                <h3 className="font-medium font-lexend text-black mb-1">Better Sleep</h3>
-                <p className="text-sm text-gray-600 font-inter leading-relaxed">Meditation can help improve sleep quality and reduce insomnia.</p>
+            </div>
+
+            <div className="benefit-item flex items-start gap-5">
+              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#7B9DB8]" />
+              <div className="benefit-text">
+                <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
+                  Better Sleep
+                </h3>
+                <p style={{ fontFamily: sansFont }} className="text-sm text-[#6B6B6B] leading-relaxed">
+                  Meditation can help improve sleep quality and reduce insomnia.
+                </p>
               </div>
             </div>
           </div>
         </div>
-        
-        {/* Meditation Player */}
-        {/* adapt callback to expected signature */}
+
         <MeditationPlayer onSessionComplete={(minutes: number) => { void handleSessionComplete('mindfulness', minutes); }} />
       </div>
     </div>
   );
 };
 
-export default MeditationPage; 
+export default MeditationPage;

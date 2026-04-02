@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import gsap from 'gsap';
 import Toast, { ToastType } from '../../ui/Toast';
 
 interface MeditationExercise {
@@ -102,6 +103,10 @@ const SAMPLE_MEDITATIONS: MeditationExercise[] = [
 
 const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }) => {
   const navigate = useNavigate();
+
+  const serifFont = "'Cormorant Garamond', serif";
+  const sansFont = "'DM Sans', sans-serif";
+
   const [currentMeditation, setCurrentMeditation] = useState<MeditationExercise | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -121,6 +126,13 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
   const totalDurationRef = useRef<number>(0);
   const isSeekingRef = useRef<boolean>(false);
 
+  const breathingCircleRef = useRef<HTMLDivElement>(null);
+  const ring1Ref = useRef<HTMLDivElement>(null);
+  const ring2Ref = useRef<HTMLDivElement>(null);
+  const breathingTlRef = useRef<gsap.core.Timeline | null>(null);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
   const categories = [
     { value: 'all', label: 'All Exercises' },
     { value: 'anxiety', label: 'Anxiety Relief' },
@@ -133,6 +145,99 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
   const filteredMeditations = selectedCategory === 'all' 
     ? SAMPLE_MEDITATIONS 
     : SAMPLE_MEDITATIONS.filter(m => m.category === selectedCategory);
+
+  useEffect(() => {
+    const linkId = 'meditation-page-fonts';
+    if (!document.getElementById(linkId)) {
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap';
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  const getCategoryGradient = (category: string): string => {
+    const gradients: Record<string, string> = {
+      anxiety: 'linear-gradient(135deg, #E8D5B7, #B8A9C9)',
+      stress: 'linear-gradient(135deg, #B8C9A9, #D4C5A9)',
+      sleep: 'linear-gradient(135deg, #A9B8C9, #C9B8D4)',
+      depression: 'linear-gradient(135deg, #C9C0B8, #D4B8C5)',
+      focus: 'linear-gradient(135deg, #C5D4A9, #A9C9B8)'
+    };
+    return gradients[category] || 'linear-gradient(135deg, #D4D4D4, #E5E5E5)';
+  };
+
+  const getCategoryColor = (category: string): string => {
+    const colors: Record<string, string> = {
+      anxiety: '#B8A9C9',
+      stress: '#8B9E8B',
+      sleep: '#7B9DB8',
+      depression: '#C9A06B',
+      focus: '#A9C9B8'
+    };
+    return colors[category] || '#8B9E8B';
+  };
+
+  useEffect(() => {
+    if (!gridRef.current) return;
+    const ctx = gsap.context(() => {
+      const cards = gridRef.current!.querySelectorAll('.exercise-card');
+      if (cards.length === 0) return;
+      gsap.fromTo(
+        cards,
+        { opacity: 0, y: 20 },
+        { opacity: 1, y: 0, duration: 0.4, stagger: 0.06, ease: 'power2.out' }
+      );
+    }, gridRef);
+    return () => ctx.revert();
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    if (!breathingCircleRef.current || !ring1Ref.current || !ring2Ref.current) return;
+    if (!currentMeditation) return;
+
+    const ctx = gsap.context(() => {
+      if (breathingTlRef.current) {
+        breathingTlRef.current.kill();
+        breathingTlRef.current = null;
+      }
+
+      if (isPlaying) {
+        const tl = gsap.timeline({ repeat: -1, yoyo: true });
+        tl.to(breathingCircleRef.current!, { scale: 1.15, duration: 4,  ease: 'sine.inOut' }, 0);
+        tl.to(ring2Ref.current!, { scale: 1.1, opacity: 0.25, duration: 4, ease: 'sine.inOut' }, 0.3);
+        tl.to(ring1Ref.current!, { scale: 1.08, opacity: 0.2, duration: 4, ease: 'sine.inOut' }, 0.6);
+        breathingTlRef.current = tl;
+      } else {
+        gsap.to(breathingCircleRef.current, { scale: 1, duration: 0.8, ease: 'power2.out' });
+        gsap.to(ring1Ref.current, { scale: 1, opacity: 0.15, duration: 0.8, ease: 'power2.out' });
+        gsap.to(ring2Ref.current, { scale: 1, opacity: 0.2, duration: 0.8, ease: 'power2.out' });
+      }
+    });
+
+    return () => {
+      ctx.revert();
+      if (breathingTlRef.current) {
+        breathingTlRef.current.kill();
+        breathingTlRef.current = null;
+      }
+    };
+  }, [isPlaying, currentMeditation]);
+
+  useEffect(() => {
+    if (currentMeditation && playerContainerRef.current) {
+      const ctx = gsap.context(() => {
+        gsap.from(playerContainerRef.current!, {
+          opacity: 0,
+          scale: 0.97,
+          duration: 0.5,
+          ease: 'power2.out'
+        });
+      });
+      return () => ctx.revert();
+    }
+  }, [currentMeditation]);
 
   const startMeditation = (meditation: MeditationExercise) => {
     setCurrentMeditation(meditation);
@@ -434,12 +539,21 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
       if (audioRef.current) {
         audioRef.current.pause();
       }
+      if (breathingTlRef.current) {
+        breathingTlRef.current.kill();
+        breathingTlRef.current = null;
+      }
     };
   }, []);
 
   return (
     <>
-      {/* Toast Notification */}
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
+      {/* TODO: Toast (ui/Toast.tsx) could be themed to match meditation palette. */}
       {toast && (
         <Toast
           message={toast.message}
@@ -448,57 +562,104 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
         />
       )}
       
-      <div className="min-h-screen bg-[#F5F5F0] py-20 px-4">
+      <div className="py-4 px-4">
         <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-semibold">Guided Meditation</h1>
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Home
-          </button>
-        </div>
-        
-      
-        
-        {/* Audio element (hidden) */}
-        <audio ref={audioRef} className="hidden" />
-        
-        {/* Category Filter */}
-        {!currentMeditation && (
-          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-            <h2 className="text-xl font-medium mb-4">Find the Right Exercise</h2>
-            <div className="flex flex-wrap gap-2">
-              {categories.map(category => (
-                <button
-                  key={category.value}
-                  onClick={() => setSelectedCategory(category.value)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    selectedCategory === category.value
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {category.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center justify-between mb-8">
+            <h1 style={{ fontFamily: serifFont }} className="text-2xl sm:text-3xl md:text-4xl font-light text-[#2C2C2C]">
+              Guided Meditation
+            </h1>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="group flex items-center gap-2 text-[#6B6B6B] hover:text-[#2C2C2C] text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 rounded-lg px-2 py-1 active:scale-[0.97]"
+              style={{ fontFamily: sansFont }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:-translate-x-1 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Home
+            </button>
           </div>
-        )}
         
-        {/* Meditation Player */}
-        {currentMeditation && (
-          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-            <div className="flex flex-col items-center text-center">
-              <h2 className="text-2xl font-medium mb-2">{currentMeditation.title}</h2>
-              <p className="text-gray-600 mb-6">{currentMeditation.description}</p>
-              
-              {/* Progress bar / Slider */}
-              <div className="w-full mb-6">
+          <audio ref={audioRef} className="hidden" />
+        
+          {!currentMeditation && (
+            <div className="mb-8">
+              <div style={{ fontFamily: sansFont }} className="text-xs uppercase tracking-[0.15em] text-[#9B9B9B] mb-4">
+                Find the Right Exercise
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+                {categories.map(category => (
+                  <button
+                    key={category.value}
+                    type="button"
+                    onClick={() => setSelectedCategory(category.value)}
+                    className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 active:scale-[0.97] ${
+                      selectedCategory === category.value
+                        ? 'bg-[#8B9E8B] text-white scale-[1.03]'
+                        : 'bg-transparent border border-[rgba(0,0,0,0.12)] text-[#6B6B6B] hover:border-[#8B9E8B] hover:text-[#2C2C2C] hover:-translate-y-[1px]'
+                    }`}
+                    style={{ fontFamily: sansFont }}
+                  >
+                    {category.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        
+          {currentMeditation && (
+            <div ref={playerContainerRef} className="flex flex-col items-center text-center max-w-md mx-auto py-8">
+              <div className="relative flex items-center justify-center mb-8" style={{ width: 220, height: 220 }}>
+                <div
+                  ref={ring1Ref}
+                  className="absolute rounded-full"
+                  style={{
+                    width: 220,
+                    height: 220,
+                    background: `radial-gradient(circle, ${getCategoryColor(currentMeditation.category)}15 0%, transparent 70%)`,
+                    opacity: 0.15
+                  }}
+                />
+                <div
+                  ref={ring2Ref}
+                  className="absolute rounded-full"
+                  style={{
+                    width: 180,
+                    height: 180,
+                    background: `radial-gradient(circle, ${getCategoryColor(currentMeditation.category)}20 0%, transparent 70%)`,
+                    opacity: 0.2
+                  }}
+                />
+                <div
+                  ref={breathingCircleRef}
+                  className="rounded-full"
+                  style={{
+                    width: 140,
+                    height: 140,
+                    background: `radial-gradient(circle, ${getCategoryColor(currentMeditation.category)}40 0%, ${getCategoryColor(currentMeditation.category)}10 100%)`,
+                    boxShadow: `0 0 40px ${getCategoryColor(currentMeditation.category)}20`
+                  }}
+                />
+              </div>
+
+              <h2 style={{ fontFamily: serifFont }} className="text-2xl font-medium text-[#2C2C2C] mb-2">
+                {currentMeditation.title}
+              </h2>
+              <p style={{ fontFamily: sansFont }} className="text-sm text-[#6B6B6B] max-w-xs leading-relaxed mb-8">
+                {currentMeditation.description}
+              </p>
+
+              <div className="w-full relative mb-2" style={{ height: 24 }}>
+                <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 h-[3px] rounded-full bg-[rgba(0,0,0,0.06)]">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-100"
+                    style={{
+                      width: `${seekValue}%`,
+                      background: `linear-gradient(90deg, ${getCategoryColor(currentMeditation.category)}80, ${getCategoryColor(currentMeditation.category)})`
+                    }}
+                  />
+                </div>
                 <input
                   type="range"
                   min="0"
@@ -508,65 +669,30 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
                   onChange={(e) => handleSeek(parseFloat(e.target.value))}
                   onMouseUp={handleSeekEnd}
                   onTouchEnd={handleSeekEnd}
-                  className="w-full h-2.5 bg-gray-200 rounded-full appearance-none cursor-pointer slider"
-                  style={{
-                    background: `linear-gradient(to right, #2563eb 0%, #2563eb ${seekValue}%, #e5e7eb ${seekValue}%, #e5e7eb 100%)`
-                  }}
+                  className="absolute inset-0 w-full opacity-0 cursor-pointer"
+                  style={{ height: 24 }}
                 />
-                <style>{`
-                  .slider::-webkit-slider-thumb {
-                    appearance: none;
-                    width: 18px;
-                    height: 18px;
-                    border-radius: 50%;
-                    background: #2563eb;
-                    cursor: pointer;
-                    border: 2px solid white;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-                    transition: all 0.2s ease;
-                  }
-                  .slider::-webkit-slider-thumb:hover {
-                    background: #1d4ed8;
-                    transform: scale(1.1);
-                  }
-                  .slider::-moz-range-thumb {
-                    width: 18px;
-                    height: 18px;
-                    border-radius: 50%;
-                    background: #2563eb;
-                    cursor: pointer;
-                    border: 2px solid white;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-                    transition: all 0.2s ease;
-                  }
-                  .slider::-moz-range-thumb:hover {
-                    background: #1d4ed8;
-                    transform: scale(1.1);
-                  }
-                  .slider:active::-webkit-slider-thumb {
-                    transform: scale(1.2);
-                  }
-                  .slider:active::-moz-range-thumb {
-                    transform: scale(1.2);
-                  }
-                `}</style>
               </div>
-              
+
               <div className="flex items-center justify-between w-full mb-8">
-                <div className="text-sm text-gray-500 font-inter">
+                <span style={{ fontFamily: sansFont }} className="text-xs text-[#9B9B9B] tabular-nums">
                   {formatTime(Math.floor((seekValue / 100) * (currentMeditation.duration * 60)))}
-                </div>
-                <div className="text-lg font-medium font-inter">{formatTime(remainingTime)}</div>
-                <div className="text-sm text-gray-500 font-inter">
+                </span>
+                <span style={{ fontFamily: sansFont }} className="text-lg font-semibold text-[#2C2C2C] tabular-nums">
+                  {formatTime(remainingTime)}
+                </span>
+                <span style={{ fontFamily: sansFont }} className="text-xs text-[#9B9B9B] tabular-nums">
                   {formatTime(currentMeditation.duration * 60)}
-                </div>
+                </span>
               </div>
-              
-              <div className="flex items-center space-x-6">
+
+              <div className="flex items-center justify-center gap-5">
                 {isPlaying ? (
                   <button
+                    type="button"
                     onClick={pauseMeditation}
-                    className="flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+                    className="flex items-center justify-center w-16 h-16 rounded-full text-white hover:scale-105 active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2"
+                    style={{ backgroundColor: getCategoryColor(currentMeditation.category) }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -574,8 +700,10 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={resumeMeditation}
-                    className="flex items-center justify-center w-16 h-16 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors"
+                    className="flex items-center justify-center w-16 h-16 rounded-full text-white hover:scale-105 active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2"
+                    style={{ backgroundColor: getCategoryColor(currentMeditation.category) }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -583,37 +711,45 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
                     </svg>
                   </button>
                 )}
-                
+
                 <button
+                  type="button"
                   onClick={() => {
-                    // Stop button - check if we should mark as complete (80% threshold)
-                    const currentProgress = currentMeditation 
+                    const currentProgress = currentMeditation
                       ? Math.min(100, (elapsedSeconds / totalDurationRef.current) * 100)
                       : progress;
                     const shouldComplete = currentProgress >= 80;
-                    // Stop and reset - user can start fresh by clicking play again
                     endMeditation(shouldComplete, shouldComplete ? 'manual' : 'skip', true);
                   }}
-                  className="flex items-center justify-center w-16 h-16 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors"
+                  className="flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full border border-[rgba(0,0,0,0.12)] text-[#6B6B6B] hover:bg-[#C97B6B]/10 hover:border-[#C97B6B]/30 hover:text-[#C97B6B] active:scale-95 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2"
                   title="Stop meditation"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10l6 0" />
                   </svg>
                 </button>
               </div>
-              
-              {progress === 100 && (
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg text-center">
-                  <h3 className="font-medium text-blue-800 mb-2">Session Complete!</h3>
-                  <p className="text-sm text-blue-600 mb-4">Great job! You've completed a {currentMeditation.duration}-minute meditation.</p>
+
+              {sessionCompleted && (
+                <div className="mt-8 text-center">
+                  <div className="inline-flex items-center gap-2 mb-2">
+                    <svg className="w-5 h-5 text-[#8B9E8B]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span style={{ fontFamily: serifFont }} className="text-lg font-medium text-[#2C2C2C] italic">
+                      Session Complete
+                    </span>
+                  </div>
+                  <p style={{ fontFamily: sansFont }} className="text-sm text-[#6B6B6B]">
+                    You&apos;ve completed a {currentMeditation.duration}-minute meditation.
+                  </p>
                 </div>
               )}
-              
+
               <button
+                type="button"
                 onClick={() => {
-                  // When switching exercises, always mark as skip (unless already completed)
                   if (!sessionCompleted) {
                     endMeditation(false, 'skip');
                   }
@@ -628,69 +764,81 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
                   pausedTimeRef.current = 0;
                   pauseStartRef.current = null;
                 }}
-                className="mt-8 text-gray-600 hover:text-black font-inter text-sm transition-colors"
+                className="mt-10 text-sm text-[#9B9B9B] hover:text-[#2C2C2C] transition-colors duration-200 relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 rounded active:scale-[0.98]"
+                style={{ fontFamily: sansFont }}
               >
                 Choose a Different Exercise
+                <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-[#2C2C2C] group-hover:w-full transition-all duration-300" />
               </button>
             </div>
-          </div>
-        )}
+          )}
         
-        {/* Meditation List */}
-        {!currentMeditation && (
-          <div className="bg-white rounded-xl shadow-md p-6">
-            <h2 className="text-xl font-medium mb-4">Available Exercises</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMeditations.map(meditation => (
-                <div 
-                  key={meditation.id}
-                  className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => startMeditation(meditation)}
-                >
-                  <div className="h-32 bg-gray-200 relative">
-                    {meditation.thumbnailSrc ? (
-                      <img 
-                        src={meditation.thumbnailSrc} 
-                        alt={meditation.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full bg-blue-50 text-blue-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.536a5 5 0 017.072 0m-9.9-2.828a9 9 0 0112.728 0" />
-                        </svg>
+          {!currentMeditation && (
+            <>
+              <div ref={gridRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredMeditations.map(meditation => (
+                  <div
+                    key={meditation.id}
+                    className="exercise-card group cursor-pointer rounded-2xl overflow-hidden bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 active:scale-[0.98]"
+                    tabIndex={0}
+                    role="button"
+                    onClick={() => startMeditation(meditation)}
+                    onKeyDown={(e) => e.key === 'Enter' && startMeditation(meditation)}
+                  >
+                    <div className="aspect-[4/3] overflow-hidden relative">
+                      {meditation.thumbnailSrc ? (
+                        <img
+                          src={meditation.thumbnailSrc}
+                          alt={meditation.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="w-full h-full" style={{ background: getCategoryGradient(meditation.category) }} />
+                      )}
+                      <div
+                        className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-sm rounded-full px-3 py-1 text-xs font-medium text-[#2C2C2C]"
+                        style={{ fontFamily: sansFont }}
+                      >
+                        {meditation.duration.toFixed(0)} min
                       </div>
-                    )}
-                    <div className="absolute bottom-2 right-2 bg-white rounded-full px-2 py-1 text-xs font-medium">
-                      {meditation.duration.toFixed(0)} min
+                    </div>
+                    <div className="p-4">
+                      <h3 style={{ fontFamily: serifFont }} className="font-semibold text-[#2C2C2C] text-lg mb-2">
+                        {meditation.title}
+                      </h3>
+                      <div className="flex justify-between items-center">
+                        <span style={{ fontFamily: sansFont }} className="text-xs uppercase tracking-[0.1em] text-[#9B9B9B]">
+                          {meditation.category}
+                        </span>
+                        <span style={{ fontFamily: sansFont }} className="text-xs text-[#9B9B9B] capitalize">
+                          {meditation.level}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-3">
-                    <h3 className="font-medium mb-1">{meditation.title}</h3>
-                    <div className="flex justify-between text-xs text-gray-500">
-                      <span className="capitalize">{meditation.category}</span>
-                      <span className="capitalize">{meditation.level}</span>
-                    </div>
+                ))}
+              </div>
+
+              {filteredMeditations.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-20 h-20 rounded-full bg-[#8B9E8B]/10 animate-pulse mb-6 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-[#8B9E8B]/20" />
                   </div>
+                  <p style={{ fontFamily: serifFont }} className="text-[#9B9B9B] text-lg italic">
+                    No exercises in this category yet
+                  </p>
                 </div>
-              ))}
-            </div>
-            
-            {filteredMeditations.length === 0 && (
-              <p className="text-center text-gray-500 py-12">No meditation exercises found in this category.</p>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
         
-        {/* Note: This is a frontend-only implementation
-             In a real app, you would have actual audio files and proper meditation guidance */}
-        <div className="text-center text-gray-500 text-sm mt-6">
-          Note: These are meditation audio by different creators.
+          <div style={{ fontFamily: sansFont }} className="text-center text-xs text-[#9B9B9B] mt-10 tracking-wide">
+            Note: These are meditation audio by different creators.
+          </div>
         </div>
-      </div>
       </div>
     </>
   );
 };
 
-export default MeditationPlayer; 
+export default MeditationPlayer;

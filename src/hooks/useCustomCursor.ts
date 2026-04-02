@@ -1,52 +1,72 @@
 import { useEffect, useState } from 'react';
 
-interface CursorPosition {
-  x: number;
-  y: number;
+export type CursorVariant = 'default' | 'pointer' | 'text';
+
+function resolveVariant(target: EventTarget | null): CursorVariant {
+  if (!(target instanceof Element)) return 'default';
+
+  if (
+    target.closest(
+      'a, button, [role="button"], [data-cursor="pointer"], input[type="button"], input[type="submit"]'
+    )
+  ) {
+    return 'pointer';
+  }
+
+  if (target.closest('p, span, h1, h2, h3, h4, h5, h6, label')) {
+    return 'text';
+  }
+
+  return 'default';
 }
 
 export const useCustomCursor = () => {
-  const [position, setPosition] = useState<CursorPosition>({ x: 0, y: 0 });
-  const [isHovering, setIsHovering] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [cursorVisible, setCursorVisible] = useState(false);
+  const [variant, setVariant] = useState<CursorVariant>('default');
 
   useEffect(() => {
-    const updatePosition = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
+    const mq = window.matchMedia('(pointer: coarse)');
+    const sync = () => {
+      setIsTouchDevice(mq.matches || 'ontouchstart' in window);
     };
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
-    const handleMouseEnter = () => {
+  useEffect(() => {
+    if (isTouchDevice) return;
+
+    const onMouseMove = () => {
       setCursorVisible(true);
     };
 
-    const handleMouseLeave = () => {
-      setCursorVisible(false);
+    const onDocLeave = (e: MouseEvent) => {
+      const rel = e.relatedTarget as Node | null;
+      if (!rel || !document.documentElement.contains(rel)) {
+        setCursorVisible(false);
+      }
     };
 
-    document.addEventListener('mousemove', updatePosition);
-    document.addEventListener('mouseenter', handleMouseEnter);
-    document.addEventListener('mouseleave', handleMouseLeave);
+    const onPointerOver = (e: MouseEvent) => {
+      setVariant(resolveVariant(e.target));
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.documentElement.addEventListener('mouseleave', onDocLeave);
+    document.addEventListener('mouseover', onPointerOver, true);
 
     return () => {
-      document.removeEventListener('mousemove', updatePosition);
-      document.removeEventListener('mouseenter', handleMouseEnter);
-      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.documentElement.removeEventListener('mouseleave', onDocLeave);
+      document.removeEventListener('mouseover', onPointerOver, true);
     };
-  }, []);
-
-  const handleLinkHoverStart = () => {
-    setIsHovering(true);
-  };
-
-  const handleLinkHoverEnd = () => {
-    setIsHovering(false);
-  };
+  }, [isTouchDevice]);
 
   return {
-    position,
-    isHovering,
+    isTouchDevice,
     cursorVisible,
-    handleLinkHoverStart,
-    handleLinkHoverEnd
+    variant,
   };
-}; 
+};

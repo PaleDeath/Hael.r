@@ -177,8 +177,11 @@ class FirebaseAuthService {
   // Get current user
   async getCurrentUser() {
     try {
-      if (this.currentUser) {
-        const userDoc = await getDoc(doc(db, 'users', this.currentUser.uid));
+      // Use auth.currentUser — this.currentUser can lag behind onAuthStateChanged
+      // by a tick and cause profile loads to fail while the user is already signed in.
+      const user = auth.currentUser;
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           return {
             success: true,
@@ -186,7 +189,7 @@ class FirebaseAuthService {
           };
         }
       }
-      
+
       return {
         success: false,
         message: 'No authenticated user found'
@@ -245,14 +248,15 @@ class FirebaseAuthService {
     }
   }
 
-  // Get current Firebase User
+  // Prefer live Firebase Auth user so services never read a stale cached ref before
+  // onAuthStateChanged runs (fixes client-side navigation race with Mood, etc.).
   get user() {
-    return this.currentUser;
+    return auth.currentUser ?? this.currentUser;
   }
 
   // Check if user is authenticated
   get isAuthenticated() {
-    return !!this.currentUser;
+    return !!(auth.currentUser ?? this.currentUser);
   }
 
   // Listen to auth state changes

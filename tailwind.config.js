@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily:{
+        inter: ['"Inter"', 'system-ui', 'sans-serif'],
         lexend: ['"Lexend Deca"', 'sans-serif'],
         lemonada: ['"Lemonada"', 'sans-serif'],
         lekton: ['"Lekton"', 'sans-serif'],

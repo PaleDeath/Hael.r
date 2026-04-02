@@ -143,6 +143,7 @@ const App: React.FC = () => {
       lenisRef.current.destroy();
       lenisRef.current = null;
     }
+    delete (window as unknown as { lenis?: InstanceType<typeof Lenis> }).lenis;
   };
 
   const createLenis = () => {
@@ -164,6 +165,7 @@ const App: React.FC = () => {
     };
     rafIdRef.current = requestAnimationFrame(loop);
     lenisRef.current = instance;
+    (window as unknown as { lenis: typeof instance }).lenis = instance;
   };
 
   // Initialise / destroy Lenis when route or mobile status changes
