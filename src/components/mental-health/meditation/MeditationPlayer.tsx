@@ -562,7 +562,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
         />
       )}
       
-      <div className="py-4 px-4">
+      <div className="pt-2 pb-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 style={{ fontFamily: serifFont }} className="text-2xl sm:text-3xl md:text-4xl font-light text-[#2C2C2C]">
@@ -596,7 +596,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
                     onClick={() => setSelectedCategory(category.value)}
                     className={`flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-200 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 active:scale-[0.97] ${
                       selectedCategory === category.value
-                        ? 'bg-[#8B9E8B] text-white scale-[1.03]'
+                        ? 'bg-[#7A9A7A] text-white scale-[1.03] shadow-[0_2px_8px_rgba(122,154,122,0.3)]'
                         : 'bg-transparent border border-[rgba(0,0,0,0.12)] text-[#6B6B6B] hover:border-[#8B9E8B] hover:text-[#2C2C2C] hover:-translate-y-[1px]'
                     }`}
                     style={{ fontFamily: sansFont }}
@@ -779,7 +779,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
                 {filteredMeditations.map(meditation => (
                   <div
                     key={meditation.id}
-                    className="exercise-card group cursor-pointer rounded-2xl overflow-hidden bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 active:scale-[0.98]"
+                    className="exercise-card group cursor-pointer rounded-2xl overflow-hidden bg-white/80 backdrop-blur-md border border-white/50 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] hover:-translate-y-[2px] transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9E8B] focus-visible:ring-offset-2 active:scale-[0.98]"
                     tabIndex={0}
                     role="button"
                     onClick={() => startMeditation(meditation)}

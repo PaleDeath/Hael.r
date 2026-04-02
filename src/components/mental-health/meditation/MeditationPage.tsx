@@ -230,40 +230,50 @@ const MeditationPage: React.FC = () => {
     if (loading || hasAnimatedStats.current) return;
 
     const ctx = gsap.context(() => {
-      gsap.from('.stat-card', {
-        y: 40,
-        opacity: 0,
-        duration: 0.7,
-        stagger: 0.12,
-        ease: 'power2.out',
-        scrollTrigger: {
-          trigger: statsContainerRef.current,
-          start: 'top 85%',
-          once: true
-        }
-      });
+      const statsCards = statsContainerRef.current?.querySelectorAll('.stat-card');
+      if (statsCards && statsCards.length > 0) {
+        gsap.from(statsCards, {
+          y: 40,
+          opacity: 0,
+          duration: 0.7,
+          stagger: 0.12,
+          ease: 'power2.out',
+          delay: 0.3,
+          scrollTrigger: {
+            trigger: statsContainerRef.current,
+            start: 'top 95%',
+            once: true
+          }
+        });
+      }
 
       const animateNumber = (
         ref: React.RefObject<HTMLDivElement | null>,
         targetValue: number,
         delay: number
       ) => {
-        if (!ref.current || targetValue === 0) return;
+        if (!ref.current) return;
+        if (targetValue === 0) {
+          ref.current.textContent = '0';
+          return;
+        }
         const obj = { val: 0 };
         gsap.to(obj, {
           val: targetValue,
           duration: 1.5,
           delay,
           ease: 'power2.out',
+          snap: { val: 1 },
           scrollTrigger: {
             trigger: statsContainerRef.current,
-            start: 'top 85%',
+            start: 'top 95%',
             once: true
           },
           onUpdate: () => {
-            if (ref.current) {
-              ref.current.textContent = String(Math.round(obj.val));
-            }
+            if (ref.current) ref.current.textContent = String(Math.round(obj.val));
+          },
+          onComplete: () => {
+            if (ref.current) ref.current.textContent = String(targetValue);
           }
         });
       };
@@ -275,7 +285,28 @@ const MeditationPage: React.FC = () => {
       hasAnimatedStats.current = true;
     }, statsContainerRef);
 
+    requestAnimationFrame(() => {
+      _ScrollTrigger.refresh();
+    });
+
     return () => ctx.revert();
+  }, [loading, stats]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => {
+        if (sessionsNumRef.current && sessionsNumRef.current.textContent === '0' && stats.completedSessions > 0) {
+          sessionsNumRef.current.textContent = String(stats.completedSessions);
+        }
+        if (minutesNumRef.current && minutesNumRef.current.textContent === '0' && stats.totalMinutes > 0) {
+          minutesNumRef.current.textContent = String(stats.totalMinutes);
+        }
+        if (streakNumRef.current && streakNumRef.current.textContent === '0' && stats.streak > 0) {
+          streakNumRef.current.textContent = String(stats.streak);
+        }
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
   }, [loading, stats]);
 
   useEffect(() => {
@@ -442,8 +473,8 @@ const MeditationPage: React.FC = () => {
             height: 250,
             top: '10%',
             left: '15%',
-            background: 'radial-gradient(circle, rgba(184,169,201,0.08) 0%, transparent 70%)',
-            filter: 'blur(40px)'
+            background: 'radial-gradient(circle, rgba(166,150,184,0.14) 0%, transparent 70%)',
+            filter: 'blur(50px)'
           }}
         />
         <div
@@ -453,8 +484,8 @@ const MeditationPage: React.FC = () => {
             height: 200,
             top: '60%',
             right: '10%',
-            background: 'radial-gradient(circle, rgba(139,158,139,0.07) 0%, transparent 70%)',
-            filter: 'blur(40px)'
+            background: 'radial-gradient(circle, rgba(122,154,122,0.12) 0%, transparent 70%)',
+            filter: 'blur(50px)'
           }}
         />
         <div
@@ -464,8 +495,8 @@ const MeditationPage: React.FC = () => {
             height: 180,
             bottom: '15%',
             left: '40%',
-            background: 'radial-gradient(circle, rgba(201,160,107,0.06) 0%, transparent 70%)',
-            filter: 'blur(40px)'
+            background: 'radial-gradient(circle, rgba(192,144,80,0.10) 0%, transparent 70%)',
+            filter: 'blur(50px)'
           }}
         />
         <div
@@ -475,8 +506,8 @@ const MeditationPage: React.FC = () => {
             height: 160,
             top: '35%',
             right: '30%',
-            background: 'radial-gradient(circle, rgba(123,157,184,0.06) 0%, transparent 70%)',
-            filter: 'blur(40px)'
+            background: 'radial-gradient(circle, rgba(107,141,168,0.10) 0%, transparent 70%)',
+            filter: 'blur(50px)'
           }}
         />
       </div>
@@ -561,7 +592,7 @@ const MeditationPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="stat-card bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] border-t-2 border-t-[#8B9E8B] rounded-2xl p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(0,0,0,0.06)] transition-all duration-300">
+              <div className="stat-card bg-white/80 backdrop-blur-md border border-white/50 border-t-[3px] border-t-[#7A9A7A] rounded-2xl p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-all duration-300">
                 <Clock className="w-7 h-7 text-[#8B9E8B] mb-4 hover:rotate-[15deg] hover:scale-110 transition-transform duration-300" />
                 <div
                   ref={sessionsNumRef}
@@ -575,7 +606,7 @@ const MeditationPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="stat-card bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] border-t-2 border-t-[#B8A9C9] rounded-2xl p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(0,0,0,0.06)] transition-all duration-300">
+              <div className="stat-card bg-white/80 backdrop-blur-md border border-white/50 border-t-[3px] border-t-[#A696B8] rounded-2xl p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-all duration-300">
                 <TrendingUp className="w-7 h-7 text-[#B8A9C9] mb-4 hover:rotate-[15deg] hover:scale-110 transition-transform duration-300" />
                 <div
                   ref={minutesNumRef}
@@ -589,7 +620,7 @@ const MeditationPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="stat-card bg-white/60 backdrop-blur-sm border border-[rgba(0,0,0,0.06)] border-t-2 border-t-[#C9A06B] rounded-2xl p-8 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(0,0,0,0.06)] transition-all duration-300">
+              <div className="stat-card bg-white/80 backdrop-blur-md border border-white/50 border-t-[3px] border-t-[#C09050] rounded-2xl p-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)] transition-all duration-300">
                 <Flame className="w-7 h-7 text-[#C9A06B] mb-4 hover:rotate-[15deg] hover:scale-110 transition-transform duration-300" />
                 <div
                   ref={streakNumRef}
@@ -615,7 +646,10 @@ const MeditationPage: React.FC = () => {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
             <div className="benefit-item flex items-start gap-5">
-              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#8B9E8B]" />
+              <div
+                className="accent-line w-[3px] h-12 rounded-full flex-shrink-0 bg-[#7A9A7A]"
+                style={{ boxShadow: '2px 0 8px rgba(122,154,122,0.15)' }}
+              />
               <div className="benefit-text">
                 <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
                   Reduces Stress
@@ -627,7 +661,10 @@ const MeditationPage: React.FC = () => {
             </div>
 
             <div className="benefit-item flex items-start gap-5">
-              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#B8A9C9]" />
+              <div
+                className="accent-line w-[3px] h-12 rounded-full flex-shrink-0 bg-[#A696B8]"
+                style={{ boxShadow: '2px 0 8px rgba(166,150,184,0.15)' }}
+              />
               <div className="benefit-text">
                 <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
                   Improves Focus
@@ -639,7 +676,10 @@ const MeditationPage: React.FC = () => {
             </div>
 
             <div className="benefit-item flex items-start gap-5">
-              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#C9A06B]" />
+              <div
+                className="accent-line w-[3px] h-12 rounded-full flex-shrink-0 bg-[#C09050]"
+                style={{ boxShadow: '2px 0 8px rgba(192,144,80,0.15)' }}
+              />
               <div className="benefit-text">
                 <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
                   Enhances Emotional Health
@@ -651,7 +691,10 @@ const MeditationPage: React.FC = () => {
             </div>
 
             <div className="benefit-item flex items-start gap-5">
-              <div className="accent-line w-[2px] h-10 rounded-full flex-shrink-0 bg-[#7B9DB8]" />
+              <div
+                className="accent-line w-[3px] h-12 rounded-full flex-shrink-0 bg-[#6B8DA8]"
+                style={{ boxShadow: '2px 0 8px rgba(107,141,168,0.15)' }}
+              />
               <div className="benefit-text">
                 <h3 style={{ fontFamily: sansFont }} className="font-semibold text-[#2C2C2C] text-base mb-1.5">
                   Better Sleep
@@ -663,6 +706,8 @@ const MeditationPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-[rgba(0,0,0,0.06)] to-transparent my-8" />
 
         <MeditationPlayer onSessionComplete={(minutes: number) => { void handleSessionComplete('mindfulness', minutes); }} />
       </div>
