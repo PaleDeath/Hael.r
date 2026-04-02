@@ -13,7 +13,7 @@
 [![Vite](https://img.shields.io/badge/Vite-Build_Tool-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Three.js](https://img.shields.io/badge/Three.js-3D_Graphics-000000?style=flat-square&logo=three.js&logoColor=white)](https://threejs.org/)
 
-[🚀 Live Demo](https://your-demo-link.com) • [📖 Documentation](https://your-docs-link.com) • [🐛 Report Bug](https://github.com/yourusername/hael.r-work/issues) • [✨ Request Feature](https://github.com/yourusername/hael.r-work/issues)
+[🚀 Live Demo](https://your-demo-link.com) • [📖 Documentation](https://your-docs-link.com) • [🐛 Report Bug](https://github.com/PaleDeath/Hael.r/issues) • [✨ Request Feature](https://github.com/PaleDeath/Hael.r/issues)
 
 </div>
 
@@ -112,8 +112,8 @@ Get Hael.r running locally in 5 minutes:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hael.r-work.git
-cd hael.r-work
+git clone https://github.com/PaleDeath/Hael.r.git
+cd Hael.r
 
 # Install frontend dependencies
 npm install
@@ -148,8 +148,8 @@ Before you begin, ensure you have the following installed:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/hael.r-work.git
-   cd hael.r-work
+   git clone https://github.com/PaleDeath/Hael.r.git
+   cd Hael.r
    ```
 
 2. **Install dependencies**
@@ -599,6 +599,12 @@ copies or substantial portions of the Software.
 - National Suicide Prevention Lifeline: 988
 - Crisis Text Line: Text HOME to 741741
 - International Association for Suicide Prevention: [https://www.iasp.info/resources/Crisis_Centres/](https://www.iasp.info/resources/Crisis_Centres/)
+
+**Crisis resources in India:**
+- **iCall (TISS Mental Health Helpline)** — Toll-free: 9152987821 — [https://icallhelpline.org](https://icallhelpline.org)
+- **AASRA** — +91-9820466726 — [http://www.aasra.info](http://www.aasra.info)
+- **Vandrevala Foundation** — 1860 266 2345 / 1800 233 3330 — [http://www.vandrevalafoundation.com](http://www.vandrevalafoundation.com)
+- **Sumaitri** — +91-11-23389090 — [http://www.sumaitri.net](http://www.sumaitri.net)
 
 ---
 
