@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-// import gsap from 'gsap'; // TS6133: 'gsap' is declared but its value is never read.
 
 interface Point {
   x: number;

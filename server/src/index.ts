@@ -1,44 +1,34 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
-import authRoutes from './routes/auth.routes';
-import assessmentRoutes from './routes/assessment.routes';
-import aiRoutes from './routes/ai.routes';
-import exportRoutes from './routes/export.routes';
 
-// Load environment variables
+// Load env vars before anything else — especially before firebase-admin initialises
 dotenv.config();
 
-// Initialize Express app
+// ─── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ─── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   credentials: true
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50kb' })); // Reject oversized request bodies early
 
-// Connect to MongoDB
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mental-health-app';
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+// ─── Route imports ─────────────────────────────────────────────────────────────
+// auth.middleware initialises firebase-admin; must import after dotenv.config()
+import moderationRoutes from './routes/moderation.routes';
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/assessments', assessmentRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/export', exportRoutes);
+// ─── Routes ────────────────────────────────────────────────────────────────────
+app.use('/api/moderation', moderationRoutes);
 
-// Health check
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Server is running' });
+// ─── Health check ──────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
 });
 
-// Start server
+// ─── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); 
+  console.log(`[Server] Running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
+});

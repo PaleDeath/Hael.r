@@ -12,7 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Environment files — never commit credentials
+.env
+.env.local
+.env.production
+.env.production.local
+server/.env
+
 # Editor directories and files
+.cursor/
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -22,3 +30,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+apphosting.local.yaml
+
+# Sentry Config File
+.env.sentry-build-plugin

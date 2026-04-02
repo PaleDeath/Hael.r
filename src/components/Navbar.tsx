@@ -1,39 +1,90 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-// import { WithClassName } from '../types/common'; // TS6133: 'WithClassName' is declared but its value is never read.
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
+import { useSoundManager } from './sound/SoundManager';
 
 interface NavbarProps {
   className?: string;
 }
 
+const NAV_LINKS = [
+  { path: '/', label: 'home.' },
+  { path: '/quizpage', label: 'assessment.' },
+  { path: '/assessment-history', label: 'history.' },
+  { path: '/mood-tracker', label: 'mood.' },
+  { path: '/meditation', label: 'meditation.' },
+  { path: '/brain-training', label: 'brain training.' },
+  { path: '/community', label: 'community.' },
+] as const;
+
+const LINE_EASE_IN: [number, number, number, number] = [0.76, 0, 0.24, 1];
+const LINE_EASE_LINK: [number, number, number, number] = [0.25, 1, 0.5, 1];
+
+const FOCUSABLE_SELECTORS =
+  'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+const BREAKPOINT = 1024;
+
+function labelParts(label: string): { text: string; period: string } {
+  if (label.endsWith('.')) {
+    return { text: label.slice(0, -1), period: '.' };
+  }
+  return { text: label, period: '' };
+}
+
 const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [savedAssessments, setSavedAssessments] = useState<any[]>([]);
-  const location = useLocation();
-  // const isHomePage = location.pathname === '/'; // TS6133: 'isHomePage' is declared but its value is never read.
+  const [isWide, setIsWide] = useState(
+    typeof window !== 'undefined' ? window.innerWidth >= BREAKPOINT : true,
+  );
+  const [savedAssessments, setSavedAssessments] = useState<unknown[]>([]);
+  const [triggerScrolled, setTriggerScrolled] = useState(false);
+  const [triggerHovered, setTriggerHovered] = useState(false);
+  const [hoverLine, setHoverLine] = useState<{ top: number; width: number } | null>(null);
 
-  const debounce = (func: Function, delay: number) => {
-    let timeoutId: NodeJS.Timeout;
-    return function(...args: any[]) {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = setTimeout(() => {
-        func(...args);
-      }, delay);
-    };
+  const { isAuthenticated, userProfile, logout } = useAuth();
+  const { playSound } = useSoundManager();
+  const location = useLocation();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const prevMenuOpen = useRef(false);
+
+  const closeMenu = useCallback(() => {
+    setIsMenuOpen(false);
+  }, []);
+
+  const toggleMenu = useCallback(() => {
+    playSound('click');
+    setIsMenuOpen((open) => !open);
+  }, [playSound]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      closeMenu();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
-  const handleResize = useCallback(debounce(() => {
-    setIsMobile(window.innerWidth < 768);
-  }, 100), []);
+  const debouncedResize = useRef(
+    (() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+      return (fn: () => void, delay: number) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(fn, delay);
+      };
+    })(),
+  );
+
+  const handleResize = useCallback(() => {
+    debouncedResize.current(() => setIsWide(window.innerWidth >= BREAKPOINT), 100);
+  }, []);
 
   useEffect(() => {
     window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
+    return () => window.removeEventListener('resize', handleResize);
   }, [handleResize]);
 
   useEffect(() => {
@@ -51,134 +102,403 @@ const Navbar: React.FC<NavbarProps> = ({ className = '' }) => {
 
     checkSavedAssessments();
     window.addEventListener('storage', checkSavedAssessments);
-    return () => {
-      window.removeEventListener('storage', checkSavedAssessments);
-    };
+    return () => window.removeEventListener('storage', checkSavedAssessments);
   }, []);
 
-  if (isMobile) {
-    return (
-      <nav className="fixed top-0 left-0 w-full z-50">
-        {/* Header with improved styling */}
-        <div className="relative z-50 flex justify-between items-center px-5 py-5 bg-[#F5F5F0]/95 backdrop-blur-sm shadow-sm">
-          <Link to="/" className="font-lexend text-2xl tracking-tight">
-            Hael.r
-          </Link>
-          
-          {/* Cleaner hamburger button */}
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="relative z-50 w-10 h-10 flex items-center justify-center"
-            aria-label="Toggle menu"
-          >
-            <div className="w-7 flex flex-col items-end">
-              <span className={`block h-[1.5px] bg-black transition-all duration-300 ease-out ${isMenuOpen ? 'w-6 -mb-[1.5px] rotate-45' : 'w-6 mb-[6px]'}`} />
-              <span className={`block h-[1.5px] bg-black transition-all duration-300 ease-out ${isMenuOpen ? 'w-6 opacity-0' : 'w-4 mb-[6px]'}`} />
-              <span className={`block h-[1.5px] bg-black transition-all duration-300 ease-out ${isMenuOpen ? 'w-6 -rotate-45' : 'w-6'}`} />
-            </div>
-          </button>
-        </div>
+  useEffect(() => {
+    const onScroll = () => {
+      const vh = window.innerHeight || 1;
+      setTriggerScrolled(window.scrollY > vh * 0.5);
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
-        {/* Menu Overlay - improved design */}
-        <div 
-          className={`fixed inset-0 bg-gradient-to-b from-black to-gray-900 transition-all duration-500 ease-in-out ${
-            isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-          }`}
-        >
-          <div className="h-full px-8 pt-24 pb-16 flex flex-col">
-            {/* Navigation Links */}
-            <div className="flex-1 flex flex-col space-y-6">
-              {[
-                { path: '/', label: 'Home' },
-                { path: '/quizpage', label: 'Assessment' },
-                { path: '/assessment-history', label: 'History', hasNotification: savedAssessments.length > 0 },
-                { path: '/mood-tracker', label: 'Mood' },
-                { path: '/meditation', label: 'Meditation' },
-                // { path: '/community', label: 'Community' }
-              ].map((item) => (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className="group block"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  <div className="flex items-center">
-                    <span className="text-white font-light text-3xl transition-transform duration-300 group-hover:text-gray-300">
-                      {item.label}
-                    </span>
-                    {item.hasNotification && (
-                      <span className="ml-2 w-2 h-2 bg-blue-500 rounded-full inline-block" />
-                    )}
-                  </div>
-                  <div className="h-px w-0 bg-white mt-1 transition-all duration-300 group-hover:w-16" />
-                </Link>
-              ))}
-            </div>
-            
-            {/* Footer */}
-            <div className="pt-6 mt-auto border-t border-gray-800">
-              <p className="text-gray-500 text-sm font-light">
-                © 2025 Hael.r • Your mental health companion
-              </p>
-            </div>
-          </div>
-        </div>
-      </nav>
-    );
-  }
+  useEffect(() => {
+    if (prevMenuOpen.current && !isMenuOpen) {
+      triggerRef.current?.focus();
+    }
+    prevMenuOpen.current = isMenuOpen;
+  }, [isMenuOpen]);
 
-  // Desktop navbar
-  return (
-    <nav className={`fixed top-0 right-0 p-5 z-50 ${className}`}>
-      <div className="relative">
-        <button 
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="flex items-center space-x-2 text-sm font-inter opacity-80 hover:opacity-100 transition-opacity duration-300"
-          aria-label="Menu"
-        >
-          <span>menu</span>
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className={`h-4 w-4 transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        
-        {isMenuOpen && (
-          <div className="absolute top-full right-0 mt-2 w-48 bg-white/95 backdrop-blur-md shadow-lg rounded-md overflow-hidden border border-gray-200 transition-all duration-300">
-            <ul className="py-1">
-              {[
-                { path: '/', label: 'home.' },
-                { path: '/quizpage', label: 'assessment.' },
-                { path: '/assessment-history', label: 'history.', hasNotification: savedAssessments.length > 0 },
-                { path: '/mood-tracker', label: 'mood.' },
-                { path: '/meditation', label: 'meditation.' },
-                // { path: '/community', label: 'community.' }
-              ].map((item) => (
-                <li key={item.path}>
-                  <Link 
-                    to={item.path}
-                    className={`block px-4 py-2 text-sm font-inter ${location.pathname === item.path ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <div className="flex items-center">
-                      <span>{item.label}</span>
-                      {item.hasNotification && (
-                        <span className="ml-2 w-2 h-2 rounded-full bg-blue-500" />
-                      )}
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+  useEffect(() => {
+    if (!isMenuOpen) {
+      return;
+    }
+
+    const overlayEl = overlayRef.current;
+    const triggerEl = triggerRef.current;
+    const focusables: HTMLElement[] = [];
+
+    if (overlayEl) {
+      focusables.push(
+        ...Array.from(overlayEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)),
+      );
+    }
+    if (triggerEl) {
+      focusables.push(triggerEl);
+    }
+
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    first?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeMenu();
+        return;
+      }
+      if (e.key !== 'Tab' || focusables.length === 0) {
+        return;
+      }
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
+      } else if (document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isMenuOpen, closeMenu]);
+
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMenuOpen]);
+
+  const overlayLinks = NAV_LINKS.map((item) => ({
+    ...item,
+    hasNotification: item.path === '/assessment-history' && savedAssessments.length > 0,
+    isActive:
+      location.pathname === item.path ||
+      (item.path === '/quizpage' && location.pathname === '/assessment'),
+  }));
+
+  const menuLineWidth = triggerHovered ? 56 : 40;
+
+  const triggerPositionClass = isWide
+    ? 'fixed top-[32px] right-[40px] z-[110]'
+    : 'fixed top-5 right-6 z-[110]';
+
+  const triggerInner = (
+    <div className="flex flex-col items-center gap-1.5">
+      <div
+        className={`relative flex items-center justify-center ${
+          isWide ? 'h-[14px]' : 'h-4'
+        } ${isWide ? 'w-14' : 'w-14'}`}
+      >
+        <motion.span
+          className="absolute h-[1.5px] rounded-none bg-black"
+          style={{ originX: 0.5, originY: 0.5 }}
+          initial={false}
+          animate={
+            isMenuOpen
+              ? { width: 40, rotate: 45, opacity: 1 }
+              : { width: menuLineWidth, rotate: 0, opacity: 1 }
+          }
+          transition={{ duration: 0.3, ease: LINE_EASE_IN }}
+        />
+        <motion.span
+          className="absolute h-[1.5px] rounded-none bg-black"
+          style={{ originX: 0.5, originY: 0.5 }}
+          initial={false}
+          animate={
+            isMenuOpen
+              ? { width: 40, rotate: -45, opacity: 1 }
+              : { width: 0, rotate: -45, opacity: 0 }
+          }
+          transition={{ duration: 0.3, ease: LINE_EASE_IN }}
+        />
       </div>
+      <motion.span
+        className="font-inter text-[11px] font-light uppercase tracking-[0.15em] text-[#1a1a1a]"
+        initial={false}
+        animate={{
+          opacity: isMenuOpen ? 1 : triggerHovered ? 1 : 0.5,
+        }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+      >
+        {isMenuOpen ? 'close' : 'menu'}
+      </motion.span>
+    </div>
+  );
+
+  const overlayVariants = {
+    visible: {
+      clipPath: 'inset(0 0 0% 0)',
+      transition: { duration: 0.5, ease: LINE_EASE_IN },
+    },
+    hidden: {
+      clipPath: 'inset(0 0 100% 0)',
+      transition: { duration: 0.4, ease: LINE_EASE_IN },
+    },
+  };
+
+  return (
+    <>
+      {/*
+        Parallax must not run on this <nav>: GSAP sets transform on `.parallax-section`,
+        which breaks fixed/absolute layout for the menu trigger. A zero-impact sentinel
+        keeps the same section index order (Header stays at i=1 in ScrollTrigger).
+      */}
+      <div
+        className={`pointer-events-none absolute left-0 top-0 -z-10 h-px w-px overflow-hidden opacity-0 ${className}`.trim()}
+        aria-hidden
+      />
+      <nav
+        className="pointer-events-none fixed left-0 right-0 top-0 z-[100] min-h-0"
+        aria-label="Site navigation"
+      >
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            ref={overlayRef}
+            id="nav-overlay-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+            className="pointer-events-auto fixed inset-0 z-[100] flex flex-col bg-[rgba(245,245,240,0.98)] backdrop-blur-[24px]"
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            variants={overlayVariants}
+          >
+            <div
+              className={`flex min-h-0 flex-1 flex-col px-6 pb-36 sm:px-12 lg:px-10 ${
+                isWide
+                  ? 'justify-center pt-28 lg:ml-[40%] lg:w-[60%]'
+                  : 'justify-center pt-24'
+              }`}
+            >
+              <nav className="flex flex-1 flex-col justify-center" aria-label="Primary">
+                <ul
+                  className={`flex flex-col gap-[clamp(12px,2vw,24px)] ${
+                    isWide ? 'items-end text-right' : 'items-start text-left'
+                  }`}
+                >
+                  {overlayLinks.map((item, i) => {
+                    const n = String(i + 1).padStart(2, '0');
+                    const { text, period } = labelParts(item.label);
+                    const showDot =
+                      item.isActive ||
+                      (item.path === '/assessment-history' && item.hasNotification);
+                    const dotIsBlue =
+                      item.path === '/assessment-history' && item.hasNotification;
+                    const numberStrong = item.isActive;
+
+                    return (
+                      <li key={item.path} className={isWide ? 'w-full' : ''}>
+                        <motion.div
+                          initial={{ opacity: 0, x: isWide ? 40 : -24 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{
+                            delay: 0.2 + i * 0.06,
+                            duration: 0.5,
+                            ease: LINE_EASE_LINK,
+                          }}
+                          className={`group relative flex ${isWide ? 'w-full justify-end' : ''}`}
+                          whileTap={
+                            !isWide ? { scale: 0.98, opacity: 0.7 } : undefined
+                          }
+                        >
+                          <Link
+                            to={item.path}
+                            onClick={() => {
+                              playSound('click');
+                              closeMenu();
+                            }}
+                            onMouseEnter={
+                              isWide
+                                ? (e) => {
+                                    const r = e.currentTarget.getBoundingClientRect();
+                                    setHoverLine({
+                                      top: r.top + r.height / 2,
+                                      width: r.left,
+                                    });
+                                  }
+                                : undefined
+                            }
+                            onMouseLeave={
+                              isWide
+                                ? () => {
+                                    setHoverLine(null);
+                                  }
+                                : undefined
+                            }
+                            className={`relative inline-flex items-baseline gap-3 ${
+                              isWide ? 'origin-right' : ''
+                            }`}
+                          >
+                            {isWide && (
+                              <span
+                                className="flex shrink-0 items-center gap-2 self-start pt-[0.35em]"
+                                aria-hidden
+                              >
+                                {showDot && (
+                                  <span
+                                    className="h-[4px] w-[4px] shrink-0 rounded-full"
+                                    style={{
+                                      backgroundColor: dotIsBlue ? '#3B82F6' : '#1a1a1a',
+                                    }}
+                                  />
+                                )}
+                                {!showDot && <span className="w-[4px] shrink-0" aria-hidden />}
+                                <span
+                                  className={`font-mono text-xs tabular-nums text-[#999] transition-[opacity,color] duration-300 ease-out ${
+                                    numberStrong
+                                      ? 'opacity-100 text-[#1a1a1a]'
+                                      : 'opacity-[0.4] group-hover:opacity-100'
+                                  }`}
+                                >
+                                  {n}
+                                </span>
+                              </span>
+                            )}
+                            <span
+                              className={`font-inter leading-[1.65] tracking-tight text-[#1a1a1a] transition-[transform,font-weight] duration-300 ease-out ${
+                                isWide
+                                  ? 'text-[clamp(36px,5vw,64px)] group-hover:translate-x-2'
+                                  : 'text-[clamp(28px,8vw,40px)]'
+                              } ${item.isActive ? 'font-normal' : 'font-light'}`}
+                            >
+                              <span>{text}</span>
+                              {period ? (
+                                <span
+                                  className={`inline-block transition-transform duration-300 ease-out ${
+                                    isWide
+                                      ? 'delay-75 group-hover:translate-x-1'
+                                      : ''
+                                  }`}
+                                >
+                                  {period}
+                                </span>
+                              ) : null}
+                            </span>
+                          </Link>
+                        </motion.div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </nav>
+            </div>
+
+            <motion.div
+              className="pointer-events-auto absolute bottom-8 left-6 font-inter text-sm sm:bottom-10 sm:left-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4, duration: 0.4, ease: 'easeOut' }}
+            >
+              {isAuthenticated ? (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[14px] text-[#999]">
+                    Welcome, {userProfile?.firstName ?? 'there'}.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="text-left text-[14px] text-[#999] transition-colors duration-200 hover:text-[#1a1a1a]"
+                  >
+                    sign out.
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <Link
+                    to="/login"
+                    onClick={() => {
+                      playSound('click');
+                      closeMenu();
+                    }}
+                    className="text-[14px] text-[#999] transition-colors duration-200 hover:text-[#1a1a1a]"
+                  >
+                    sign in.
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={() => {
+                      playSound('click');
+                      closeMenu();
+                    }}
+                    className="text-[14px] text-[#999] transition-colors duration-200 hover:text-[#1a1a1a]"
+                  >
+                    get started.
+                  </Link>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {hoverLine !== null && isWide && (
+        <motion.div
+          aria-hidden
+          className="pointer-events-none fixed left-0 z-[110] h-px bg-[#1a1a1a]/20"
+          style={{ top: hoverLine.top }}
+          initial={{ width: 0 }}
+          animate={{ width: hoverLine.width }}
+          exit={{ width: 0 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        />
+      )}
+
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={toggleMenu}
+        onMouseEnter={() => setTriggerHovered(true)}
+        onMouseLeave={() => setTriggerHovered(false)}
+        className={`pointer-events-auto flex items-center justify-center rounded-full border-0 bg-transparent p-0 text-inherit outline-none ${triggerPositionClass} ${
+          !isWide ? 'min-h-[44px] min-w-[44px]' : ''
+        }`}
+        aria-expanded={isMenuOpen}
+        aria-controls="nav-overlay-dialog"
+        aria-label={isMenuOpen ? 'Close navigation' : 'Open navigation'}
+      >
+        <span className="sr-only">
+          {isMenuOpen ? 'Close navigation' : 'Open navigation'}
+        </span>
+        <motion.div
+          className="flex flex-col items-center"
+          initial={false}
+          animate={{
+            paddingLeft: triggerScrolled && !isMenuOpen ? 16 : 0,
+            paddingRight: triggerScrolled && !isMenuOpen ? 16 : 0,
+            paddingTop: triggerScrolled && !isMenuOpen ? 8 : 0,
+            paddingBottom: triggerScrolled && !isMenuOpen ? 8 : 0,
+            backgroundColor:
+              triggerScrolled && !isMenuOpen
+                ? 'rgba(245, 245, 240, 0.6)'
+                : 'rgba(245, 245, 240, 0)',
+          }}
+          style={{
+            borderRadius: 20,
+            backdropFilter:
+              triggerScrolled && !isMenuOpen ? 'blur(8px)' : 'none',
+            WebkitBackdropFilter:
+              triggerScrolled && !isMenuOpen ? 'blur(8px)' : 'none',
+          }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        >
+          {triggerInner}
+        </motion.div>
+      </button>
     </nav>
+    </>
   );
 };
 

@@ -1,59 +1,77 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import User from '../models/user.model';
+import admin from 'firebase-admin';
 
-// Extend Express Request interface to include user
+// ─── Typed user attached to request ───────────────────────────────────────────
 declare global {
   namespace Express {
     interface Request {
-      user?: any;
+      user?: {
+        uid: string;
+        email?: string;
+      };
     }
   }
 }
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+// ─── Firebase Admin initialisation (runs once on first import) ────────────────
+if (!admin.apps.length) {
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+  if (serviceAccountKey) {
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert(JSON.parse(serviceAccountKey))
+      });
+    } catch (err) {
+      console.error('[AUTH] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY — check the env var format:', err);
+      process.exit(1);
+    }
+  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // Works in GCP / Cloud Run environments
+    admin.initializeApp({ credential: admin.credential.applicationDefault() });
+  } else {
+    // Development fallback: project-ID only (works with Firebase Auth emulator)
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'haelr-462818';
+    console.warn(
+      `[AUTH] No service-account credentials found. Initialising Firebase Admin with projectId="${projectId}" only. ` +
+      'Set FIREBASE_SERVICE_ACCOUNT_KEY for production.'
+    );
+    admin.initializeApp({ projectId });
+  }
+}
+
+export { admin };
+
+// ─── Authentication middleware ─────────────────────────────────────────────────
+export const authenticate = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    // Get the token from the authorization header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
-        message: 'Authentication required. Please provide a valid token.'
+        message: 'Authentication required. Provide a Firebase ID token as "Bearer <token>".'
       });
+      return;
     }
 
-    const token = authHeader.split(' ')[1];
-    const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret';
+    const idToken = authHeader.split(' ')[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
 
-    // Verify token
-    const decoded = jwt.verify(token, jwtSecret) as { id: string };
-    
-    // Find user by id
-    const user = await User.findById(decoded.id).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Attach user to request object
-    req.user = user;
+    // Only expose what downstream handlers actually need
+    req.user = { uid: decoded.uid, email: decoded.email };
     next();
-    
-  } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid token'
-      });
-    }
-    
-    return res.status(500).json({
+  } catch {
+    res.status(401).json({
       success: false,
-      message: 'Server error during authentication'
+      message: 'Invalid or expired token.'
     });
   }
-}; 
+};
+
+// Alias kept for existing import sites
+export const authenticateToken = authenticate;

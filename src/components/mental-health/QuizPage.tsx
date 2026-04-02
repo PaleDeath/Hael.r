@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { allQuestions } from './questions';
 import { analyzeResponses } from './analyzer';
 import { QuizState, AnalysisResult, Question } from './types';
@@ -12,11 +12,18 @@ import SleepIllustration from './illustrations/SleepIllustration';
 import SocialIllustration from './illustrations/SocialIllustration';
 import CrisisResources from './CrisisResources';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import firebaseAssessmentService from '../../services/firebase.assessment.service';
+import { generateInsights, InsightReport } from '../../services/insights.service';
+import { loadWellnessProgress, recordAssessmentDay, WellnessProgress } from '../../services/wellness-local.service';
+import InsightsPanel from './InsightsPanel';
+import QuizResultsCharts from './QuizResultsCharts';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const QuizPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const [state, setState] = useState<QuizState>({
     currentQuestionIndex: 0,
     answers: {},
@@ -38,6 +45,8 @@ const QuizPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const progressTextRef = useRef<HTMLDivElement>(null);
+  const streakRecordedRef = useRef(false);
+  const [wellnessProgress, setWellnessProgress] = useState<WellnessProgress>(() => loadWellnessProgress());
 
   // Calculate progress based on answers given, not fixed question list
   const progress = Math.min(
@@ -87,30 +96,61 @@ const QuizPage: React.FC = () => {
     setShowShareOptions(!showShareOptions);
   };
   
-  // Function to save results to local storage
-  const handleSaveResults = () => {
-    if (!result) return;
+  // Function to save results to Firebase with localStorage fallback
+  const handleSaveResults = async () => {
+    if (!result) {
+      console.error('Cannot save: No result available');
+      return;
+    }
     
+    if (currentUser) {
+      // Save to Firebase for authenticated users
+      try {
+        const assessmentData = {
+          answers: state.answers,
+          questionPath: state.questionPath,
+          categories: result.categories,
+          overallAnalysis: result.overallAnalysis,
+          recommendations: result.recommendations
+        };
+
+        const response = await firebaseAssessmentService.createAssessment(assessmentData);
+        
+        if (response.success) {
+          setSaveSuccess(true);
+          setTimeout(() => setSaveSuccess(false), 3000);
+          console.log('Assessment saved to Firebase:', response.assessment?.id);
+        } else {
+          console.error('Failed to save to Firebase, falling back to localStorage:', response.message);
+          throw new Error(response.message);
+        }
+      } catch (error) {
+        console.error('Error saving to Firebase, using localStorage fallback:', error);
+        // Fallback to localStorage if Firebase fails
+        saveToLocalStorage();
+      }
+    } else {
+      // Use localStorage for non-authenticated users
+      saveToLocalStorage();
+    }
+  };
+
+  const saveToLocalStorage = () => {
     try {
-      // Get existing saved assessments or initialize empty array
       const savedAssessments = JSON.parse(localStorage.getItem('savedAssessments') || '[]');
-      
-      // Add new assessment with timestamp
       savedAssessments.push({
         date: new Date().toISOString(),
         result,
         answers: state.answers,
         questionPath: state.questionPath
       });
-      
-      // Save back to localStorage
       localStorage.setItem('savedAssessments', JSON.stringify(savedAssessments));
-      
-      // Show success message
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      console.log('Assessment saved to localStorage');
     } catch (error) {
-      console.error('Error saving assessment:', error);
+      console.error('Error saving to localStorage:', error);
+      alert('Failed to save assessment. Please try again.');
     }
   };
   
@@ -211,12 +251,26 @@ const QuizPage: React.FC = () => {
     }
   }, [currentQuestion, progress, state.answers.length]);
 
+  const insightReport: InsightReport | null = useMemo(() => {
+    if (!result) return null;
+    const dayKey = new Date().toISOString().slice(0, 10);
+    return generateInsights(result, undefined, { variationKey: dayKey });
+  }, [result]);
+
   useEffect(() => {
-    // If the assessment is completed and we have results, animate them in
+    if (!result || streakRecordedRef.current) return;
+    streakRecordedRef.current = true;
+    const next = recordAssessmentDay();
+    setWellnessProgress(next);
+  }, [result]);
+
+  useEffect(() => {
+    // If the assessment is completed and we have results, animate shell in
     if (state.completed && result && questionRef.current) {
-      gsap.fromTo(questionRef.current,
+      gsap.fromTo(
+        questionRef.current,
         { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 1, ease: "power3.out" }
+        { opacity: 1, y: 0, duration: 0.85, ease: 'power3.out' }
       );
     }
   }, [state.completed, result]);
@@ -348,7 +402,22 @@ const QuizPage: React.FC = () => {
 
     return (
       <div className="max-w-4xl mx-auto px-4 py-8 opacity-0" ref={questionRef}>
-        <h2 className="text-3xl font-semibold mb-6 text-center">Your Mental Health Assessment</h2>
+        <h2 className="text-3xl font-semibold mb-2 text-center">Your Mental Health Assessment</h2>
+
+        <div className="flex flex-wrap justify-center gap-3 mb-6">
+          <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 border border-amber-200 px-4 py-2 text-sm font-medium text-amber-900">
+            <span aria-hidden>🔥</span>
+            <span>
+              {wellnessProgress.assessmentStreak} day assessment streak
+            </span>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-slate-50 border border-slate-200 px-4 py-2 text-sm text-slate-700">
+            <span>
+              {wellnessProgress.totalAssessments} total check-in
+              {wellnessProgress.totalAssessments !== 1 ? 's' : ''} on this device
+            </span>
+          </div>
+        </div>
         
         {/* Show crisis resources for high severity results */}
         {showCrisisResources && (
@@ -360,10 +429,16 @@ const QuizPage: React.FC = () => {
         
         {/* Results Content */}
         <div className="space-y-8">
+          {insightReport && (
+            <InsightsPanel report={insightReport} />
+          )}
+
+          <QuizResultsCharts result={result} />
+
           {/* Overall Analysis */}
-          <div className="bg-white rounded-xl p-6 shadow-md">
-            <h3 className="text-xl font-medium mb-4">Overall Analysis</h3>
-            <p className="text-gray-700">{result.overallAnalysis}</p>
+          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+            <h3 className="text-xl font-medium mb-4">Written overview</h3>
+            <p className="text-gray-700 leading-relaxed">{result.overallAnalysis}</p>
           </div>
           
           {/* Category Results */}

@@ -1,4 +1,8 @@
-import React, { useEffect, useState } from 'react';
+/*
+ * Lenis (desktop home): Diagnostic 6 — shorter duration + native touch so scroll
+ * doesn’t feel sluggish vs CSS snap (snap removed in index.css).
+ */
+import React, { useEffect, useRef, useState } from 'react';
 import Lenis from '@studio-freight/lenis';
 import { About } from './components/About';
 import { CanvasContainer } from './components/CanvasContainer';
@@ -13,15 +17,24 @@ import { Hippo } from './components/Hippo';
 import { Amygdala } from './components/Amygdala';
 import { Neuro } from './components/Neuro';
 import { Marquee } from './components/Marquee';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import QuizPage from './components/mental-health/QuizPage';
 import AssessmentHistoryPage from './components/mental-health/AssessmentHistoryPage';
 import MoodTracker from './components/mental-health/mood/MoodTracker';
 import MeditationPage from './components/mental-health/meditation/MeditationPage';
+import BrainTrainingPage from './components/brain-training/BrainTrainingPage';
+import BrainTrainingGameRouter from './components/brain-training/BrainTrainingGameRouter';
+import BrainTrainingProgress from './components/brain-training/BrainTrainingProgress';
 import CustomCursor from './components/cursor/CustomCursor';
 import { SoundProvider, useSoundManager } from './components/sound/SoundManager';
 import { HelmetProvider, Helmet } from 'react-helmet-async';
 import MobileHomePage from './components/MobileHomePage';
+import { AuthProvider } from './contexts/AuthContext';
+import AuthPage from './components/auth/AuthPage';
+import PostList from './components/community/PostList';
+import PostComposer from './components/community/PostComposer';
+import PostDetail from './components/community/PostDetail';
+import { useIsMobile } from './hooks/useIsMobile';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -31,75 +44,51 @@ interface HomePageProps {
   handleEnter: () => void;
 }
 
+// ─── Desktop homepage ──────────────────────────────────────────────────────────
+// This component is only rendered when !isMobile (see HomePageSelector), so we
+// never need to track mobile state internally.
 const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOut, handleEnter }) => {
   const { playSound } = useSoundManager();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  // Set up parallax effects - optimized for mobile
-  useEffect(() => {
-    if (isMobile) {
-      // Simpler animations for mobile
-      const sections = document.querySelectorAll('.parallax-section');
-      sections.forEach((section) => {
-        gsap.to(section, {
-          yPercent: -5,
-          ease: "none",
-          scrollTrigger: {
-            trigger: section,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: true,
-            markers: false
-          }
-        });
+    // Desktop-only parallax
+    const sections = document.querySelectorAll('.parallax-section');
+    // Light parallax only — large yPercent scrubs fight Lenis and feel “stuck”
+    sections.forEach((section, i) => {
+      const depth = i * 0.15;
+      gsap.to(section, {
+        yPercent: -(8 * depth),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: section,
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: true,
+          markers: false
+        }
       });
-    } else {
-      // Full parallax for desktop
-      const sections = document.querySelectorAll('.parallax-section');
-      sections.forEach((section, i) => {
-        const depth = i * 0.2; // Different parallax depths
-        gsap.to(section, {
-          yPercent: -(30 * depth),
-          ease: "none",
-          scrollTrigger: {
-            trigger: section,
-            start: "top bottom",
-            end: "bottom top",
-            scrub: true,
-            markers: false
-          }
-        });
-      });
-    }
-  }, [isMobile]);
+    });
+  }, []); // runs once — DesktopHomePage is never shown on mobile
 
   return (
     <div className="relative bg-[#F5F5F0]">
       <Helmet>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#F5F5F0" />
       </Helmet>
-      
+
       {isOverlayVisible && <Overlay onEnter={handleEnter} isFadingOut={isFadingOut} />}
-      <div 
+      <div
+        id="home-scroll-root"
         className={`transition-opacity duration-1000 ${
           isOverlayVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
         onClick={() => playSound('click')}
       >
-        <div className="h-screen w-full fixed top-0 z-10 transition-opacity duration-1000">
+        <div
+          className="brain-canvas-wrapper pointer-events-none h-screen w-full fixed inset-0 z-10 transition-opacity duration-1000 [will-change:transform] [transform:translateZ(0)]"
+        >
           <CanvasContainer />
         </div>
         <Navbar className="parallax-section" />
@@ -116,204 +105,159 @@ const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOu
   );
 };
 
+// ─── Homepage selector (mobile vs desktop) ─────────────────────────────────────
 const HomePageSelector: React.FC<HomePageProps> = (props) => {
-  const [isMobile, setIsMobile] = useState(false);
-  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
+  // Single call to the shared hook — no duplicate listener
+  const isMobile = useIsMobile();
 
-  // More reliable check for mobile view
-  const checkIsMobile = () => {
-    // Use both width and user agent as backup
-    const width = window.innerWidth;
-    const userAgent = navigator.userAgent.toLowerCase();
-    const isMobileDevice = /mobile|iphone|ipod|android|blackberry|opera mini|iemobile|wpdesktop/i.test(userAgent);
-    
-    // Set as mobile if either width is small or device is detected as mobile
-    const mobile = width < 768 || isMobileDevice;
-    console.log(`Screen width: ${width}, UserAgent mobile: ${isMobileDevice}, Setting isMobile: ${mobile}`);
-    setIsMobile(mobile);
-    
-    // Mark initial check as complete
-    if (!initialCheckComplete) {
-      setInitialCheckComplete(true);
-    }
-  };
-
-  useEffect(() => {
-    console.log("HomePageSelector mounted");
-    // Force immediate check
-    checkIsMobile();
-    
-    // Add event listener
-    window.addEventListener('resize', checkIsMobile);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', checkIsMobile);
-    };
-  }, []);
-
-  // Show a loading state until initial check completes
-  if (!initialCheckComplete) {
+  if (isMobile) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <div className="text-xl font-inter">Loading...</div>
-      </div>
+      <MobileHomePage
+        isOverlayVisible={props.isOverlayVisible}
+        isFadingOut={props.isFadingOut}
+        handleEnter={props.handleEnter}
+      />
     );
   }
 
-  // Ensure mobile homepage shows up immediately on load
-  if (isMobile) {
-    console.log("Rendering MobileHomePage");
-    return <MobileHomePage 
-      isOverlayVisible={props.isOverlayVisible}
-      isFadingOut={props.isFadingOut}
-      handleEnter={props.handleEnter}
-    />;
-  }
-
-  console.log("Rendering DesktopHomePage");
   return <DesktopHomePage {...props} />;
 };
 
+// ─── Root application ──────────────────────────────────────────────────────────
 const App: React.FC = () => {
   const [isOverlayVisible, setIsOverlayVisible] = useState(true);
-  const [isFadingOut, setIsFadingOut] = useState(false);
-  const [lenis, setLenis] = useState<any>(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isFadingOut, setIsFadingOut]             = useState(false);
+  const isMobile = useIsMobile(); // single shared hook — no manual state + listener
 
+  // ─── Lenis smooth scroll (desktop home page only) ───────────────────────────
+  // Stores both the Lenis instance and the rAF id so the loop can be cancelled.
+  const lenisRef   = useRef<InstanceType<typeof Lenis> | null>(null);
+  const rafIdRef   = useRef<number>(0);
+
+  const destroyLenis = () => {
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = 0;
+    }
+    if (lenisRef.current) {
+      lenisRef.current.destroy();
+      lenisRef.current = null;
+    }
+  };
+
+  const createLenis = () => {
+    if (lenisRef.current) return; // already running
+
+    const instance = new Lenis({
+      duration: 1.0,
+      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      smoothWheel: true,
+      syncTouch: false,
+      wheelMultiplier: 1,
+      touchMultiplier: 1
+    });
+
+    const loop = (time: number) => {
+      instance.raf(time);
+      rafIdRef.current = requestAnimationFrame(loop);
+    };
+    rafIdRef.current = requestAnimationFrame(loop);
+    lenisRef.current = instance;
+  };
+
+  // Initialise / destroy Lenis when route or mobile status changes
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
+    const isHomePath = window.location.pathname === '/';
 
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
+    if (isHomePath && !isMobile) {
+      createLenis();
+    } else {
+      destroyLenis();
+    }
 
-  useEffect(() => {
-    const initLenis = () => {
-      if (window.location.pathname === '/' && !isMobile) {
-        const lenisInstance = new Lenis({
-          duration: isMobile ? 0.8 : 1.2,
-          easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          smoothWheel: true,
-          wheelMultiplier: isMobile ? 0.8 : 1,
-          touchMultiplier: isMobile ? 1.5 : 2,
-        });
-
-        const raf = (time: number) => {
-          lenisInstance.raf(time);
-          requestAnimationFrame(raf);
-        };
-
-        requestAnimationFrame(raf);
-        setLenis(lenisInstance);
-
-        return lenisInstance;
-      }
-      return null;
-    };
-
-    const lenisInstance = initLenis();
-
-    return () => {
-      if (lenisInstance) {
-        lenisInstance.destroy();
-      }
-    };
+    return destroyLenis; // guaranteed cleanup on unmount or dep change
   }, [isMobile]);
 
-  // Clean up Lenis when navigating away from home page
+  // Keep Lenis in sync when using browser back/forward
   useEffect(() => {
-    const handleRouteChange = () => {
-      if (window.location.pathname !== '/' && lenis) {
-        lenis.destroy();
-        setLenis(null);
-      } else if (window.location.pathname === '/' && !lenis && !isMobile) {
-        const lenisInstance = new Lenis({
-          duration: isMobile ? 0.8 : 1.2,
-          easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          smoothWheel: true,
-          wheelMultiplier: isMobile ? 0.8 : 1,
-          touchMultiplier: isMobile ? 1.5 : 2,
-        });
-
-        const raf = (time: number) => {
-          lenisInstance.raf(time);
-          requestAnimationFrame(raf);
-        };
-
-        requestAnimationFrame(raf);
-        setLenis(lenisInstance);
+    const onPopState = () => {
+      const isHomePath = window.location.pathname === '/';
+      if (!isHomePath || isMobile) {
+        destroyLenis();
+      } else {
+        createLenis();
       }
     };
-
-    window.addEventListener('popstate', handleRouteChange);
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, [lenis, isMobile]);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [isMobile]);
 
   const handleEnter = () => {
     setIsFadingOut(true);
-    setTimeout(() => {
-      setIsOverlayVisible(false);
-    }, 1000);
+    setTimeout(() => setIsOverlayVisible(false), 1000);
   };
 
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <HelmetProvider>
-        <SoundProvider>
-          {/* Only show custom cursor on non-mobile devices */}
-          {!isMobile && <CustomCursor />}
-          <Helmet>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-            <meta name="apple-mobile-web-app-capable" content="yes" />
-            <meta name="theme-color" content="#F5F5F0" />
-          </Helmet>
-          <Routes>
-            <Route path="/" element={
-              <HomePageSelector 
-                isOverlayVisible={isOverlayVisible}
-                isFadingOut={isFadingOut}
-                handleEnter={handleEnter}
-              />
-            } />
-            <Route path="/quizpage" element={
-              <div className="bg-[#F5F5F0]">
-                <Navbar />
-                <QuizPage />
-              </div>
-            } />
-            <Route path="/assessment" element={
-              <div className="bg-[#F5F5F0]">
-                <Navbar />
-                <QuizPage />
-              </div>
-            } />
-            <Route path="/assessment-history" element={
-              <div className="bg-[#F5F5F0]">
-                <Navbar />
-                <AssessmentHistoryPage />
-              </div>
-            } />
-            <Route path="/mood-tracker" element={
-              <div className="bg-[#F5F5F0]">
-                <Navbar />
-                <MoodTracker />
-              </div>
-            } />
-            <Route path="/meditation" element={
-              <div className="bg-[#F5F5F0]">
-                <Navbar />
-                <MeditationPage />
-              </div>
-            } />
-          </Routes>
-        </SoundProvider>
+        <AuthProvider>
+          <SoundProvider>
+            {!isMobile && <CustomCursor />}
+            <Helmet>
+              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+              <meta name="mobile-web-app-capable" content="yes" />
+              <meta name="theme-color" content="#F5F5F0" />
+            </Helmet>
+            <Routes>
+              <Route path="/" element={
+                <HomePageSelector
+                  isOverlayVisible={isOverlayVisible}
+                  isFadingOut={isFadingOut}
+                  handleEnter={handleEnter}
+                />
+              } />
+
+              {/* Canonical assessment route */}
+              <Route path="/assessment" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><QuizPage /></div>
+              } />
+              {/* Legacy alias — redirect to canonical URL */}
+              <Route path="/quizpage" element={<Navigate to="/assessment" replace />} />
+
+              <Route path="/assessment-history" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><AssessmentHistoryPage /></div>
+              } />
+              <Route path="/mood-tracker" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><MoodTracker /></div>
+              } />
+              <Route path="/meditation" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><MeditationPage /></div>
+              } />
+              <Route path="/brain-training" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><BrainTrainingPage /></div>
+              } />
+              <Route path="/brain-training/game/:gameId" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><BrainTrainingGameRouter /></div>
+              } />
+              <Route path="/brain-training/progress" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><BrainTrainingProgress /></div>
+              } />
+              <Route path="/community" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><PostList /></div>
+              } />
+              <Route path="/community/new" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><PostComposer /></div>
+              } />
+              <Route path="/community/:postId" element={
+                <div className="bg-[#F5F5F0]"><Navbar /><PostDetail /></div>
+              } />
+              <Route path="/auth"     element={<AuthPage />} />
+              <Route path="/login"    element={<AuthPage defaultTab="login" />} />
+              <Route path="/register" element={<AuthPage defaultTab="register" />} />
+            </Routes>
+          </SoundProvider>
+        </AuthProvider>
       </HelmetProvider>
     </Router>
   );

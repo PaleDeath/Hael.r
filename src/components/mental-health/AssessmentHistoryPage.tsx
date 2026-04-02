@@ -7,6 +7,8 @@ import StressIllustration from './illustrations/StressIllustration';
 import SleepIllustration from './illustrations/SleepIllustration';
 import SocialIllustration from './illustrations/SocialIllustration';
 import AssessmentCharts from './visualizations/AssessmentCharts';
+import { useAuth } from '../../contexts/AuthContext';
+import firebaseAssessmentService, { IAssessment } from '../../services/firebase.assessment.service';
 
 interface SavedAssessment {
   date: string;
@@ -17,29 +19,85 @@ interface SavedAssessment {
 
 const AssessmentHistoryPage: React.FC = () => {
   const navigate = useNavigate();
+  const { currentUser, isAuthenticated } = useAuth();
   const [savedAssessments, setSavedAssessments] = useState<SavedAssessment[]>([]);
+  const [firebaseAssessments, setFirebaseAssessments] = useState<IAssessment[]>([]);
   const [selectedAssessment, setSelectedAssessment] = useState<SavedAssessment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage] = useState(1);
+  const [, setHasNextPage] = useState(false);
 
   useEffect(() => {
-    // Load saved assessments from localStorage
+    loadAssessments();
+  }, [isAuthenticated, currentUser, currentPage]);
+
+  const loadAssessments = async () => {
+    setLoading(true);
+    
+    if (isAuthenticated && currentUser) {
+      // Load from Firebase for authenticated users
+      try {
+        const result = await firebaseAssessmentService.getUserAssessments(currentPage, 10);
+        
+        if (result.success) {
+          const assessments = result.assessments!;
+          setFirebaseAssessments(assessments);
+          setHasNextPage(result.pagination!.hasNextPage);
+          
+          // Convert Firebase assessments to local format for compatibility
+          const convertedAssessments: SavedAssessment[] = assessments.map(assessment => ({
+            date: assessment.createdAt.toISOString(),
+            result: {
+              categories: assessment.categories,
+              overallAnalysis: assessment.overallAnalysis,
+              recommendations: assessment.recommendations
+            },
+            answers: assessment.answers,
+            questionPath: assessment.questionPath
+          }));
+          
+          setSavedAssessments(convertedAssessments);
+          
+          // Select the most recent assessment by default if available
+          if (convertedAssessments.length > 0) {
+            setSelectedAssessment(convertedAssessments[0]);
+          }
+          
+          console.log(`Loaded ${assessments.length} assessments from Firebase`);
+        } else {
+          console.error('Failed to load from Firebase, falling back to localStorage:', result.message);
+          throw new Error(result.message);
+        }
+      } catch (error) {
+        console.error('Error loading from Firebase, using localStorage fallback:', error);
+        loadFromLocalStorage();
+      }
+    } else {
+      // Load from localStorage for non-authenticated users
+      loadFromLocalStorage();
+    }
+    
+    setLoading(false);
+  };
+
+  const loadFromLocalStorage = () => {
     try {
-      const savedData = localStorage.getItem('savedAssessments');
-      if (savedData) {
-        const assessments = JSON.parse(savedData);
+      const saved = localStorage.getItem('savedAssessments');
+      if (saved) {
+        const assessments = JSON.parse(saved);
         setSavedAssessments(assessments);
         
         // Select the most recent assessment by default if available
         if (assessments.length > 0) {
           setSelectedAssessment(assessments[0]);
         }
+        
+        console.log(`Loaded ${assessments.length} assessments from localStorage`);
       }
     } catch (error) {
-      console.error('Error loading saved assessments:', error);
+      console.error('Error loading from localStorage:', error);
     }
-    
-    setLoading(false);
-  }, []);
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -84,17 +142,51 @@ const AssessmentHistoryPage: React.FC = () => {
     }
   };
   
-  const handleDeleteAssessment = (index: number) => {
-    if (window.confirm('Are you sure you want to delete this assessment?')) {
-      const updatedAssessments = [...savedAssessments];
-      updatedAssessments.splice(index, 1);
-      setSavedAssessments(updatedAssessments);
-      localStorage.setItem('savedAssessments', JSON.stringify(updatedAssessments));
-      
-      if (updatedAssessments.length > 0) {
-        setSelectedAssessment(updatedAssessments[0]);
+  const handleDeleteAssessment = async (index: number) => {
+    if (!window.confirm('Are you sure you want to delete this assessment?')) {
+      return;
+    }
+
+    if (currentUser) {
+      // Delete from Firebase for authenticated users
+      try {
+        const assessmentToDelete = firebaseAssessments[index];
+        if (assessmentToDelete && assessmentToDelete.id) {
+          const result = await firebaseAssessmentService.deleteAssessment(assessmentToDelete.id);
+          
+          if (result.success) {
+            console.log('Assessment deleted from Firebase');
+            // Refresh the list
+            await loadAssessments();
+          } else {
+            console.error('Failed to delete assessment:', result.message);
+            alert('Failed to delete assessment. Please try again.');
+          }
+        }
+      } catch (error) {
+        console.error('Error deleting assessment from Firebase:', error);
+        alert('Error deleting assessment. Please check your connection and try again.');
+      }
       } else {
-        setSelectedAssessment(null);
+      // Delete from localStorage for non-authenticated users
+      try {
+        const saved = localStorage.getItem('savedAssessments');
+        if (saved) {
+          const assessments = JSON.parse(saved);
+          assessments.splice(index, 1);
+          localStorage.setItem('savedAssessments', JSON.stringify(assessments));
+          setSavedAssessments(assessments);
+          
+          // Update selected assessment if needed
+          if (selectedAssessment === savedAssessments[index]) {
+            setSelectedAssessment(assessments.length > 0 ? assessments[0] : null);
+          }
+          
+          console.log('Assessment deleted from localStorage');
+        }
+      } catch (error) {
+        console.error('Error deleting from localStorage:', error);
+        alert('Error deleting assessment. Please try again.');
       }
     }
   };
@@ -118,6 +210,17 @@ const AssessmentHistoryPage: React.FC = () => {
             Back to Home
           </button>
         </div>
+
+        {!currentUser && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-blue-800 text-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              You're viewing locally stored assessments. Sign in to sync your data across devices and access cloud storage.
+            </p>
+          </div>
+        )}
         
         {loading ? (
           <div className="text-center py-12">

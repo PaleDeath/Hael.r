@@ -1,0 +1,538 @@
+{
+  "startedAt": "2026-03-08T16:22:33.464Z",
+  "baseUrl": "http://127.0.0.1:4173",
+  "credentials": {
+    "email": "smoke.1772986953464@example.com",
+    "firstName": "Smoke",
+    "lastName": "Tester"
+  },
+  "flows": {
+    "authentication": {
+      "status": "failed",
+      "checks": [
+        "Created a new account successfully.",
+        "Observed Firebase Authentication network activity during registration.",
+        "Logout succeeded.",
+        "Observed Firebase Authentication network activity during login."
+      ],
+      "failures": [
+        {
+          "message": "Authentication redirect completed, but the authenticated navbar state did not render.",
+          "rootCause": "The session may not have propagated correctly to the routed page."
+        },
+        {
+          "message": "Auth session did not persist across reload.",
+          "rootCause": "Firebase auth persistence did not survive a full page refresh."
+        },
+        {
+          "message": "Login did not restore an authenticated navbar state.",
+          "rootCause": "The login redirect happened, but authenticated UI state was not visible on the next route."
+        },
+        {
+          "message": "Firestore reported backend connectivity problems during the authentication flow.",
+          "rootCause": "User profile reads depend on Firestore, and those reads intermittently failed while auth state was changing."
+        }
+      ],
+      "notes": [],
+      "consoleErrors": [
+        "[2026-03-08T16:22:36.472Z]  @firebase/firestore: Firestore (11.9.0): Could not reach Cloud Firestore backend. Connection failed 1 times. Most recent error: FirebaseError: [code=unavailable]: The operation could not be completed\nThis typically indicates that your device does not have a healthy Internet connection at the moment. The client will operate in offline mode until it is able to successfully connect to the backend.",
+        "[2026-03-08T16:22:39.150Z]  @firebase/firestore: Firestore (11.9.0): Could not reach Cloud Firestore backend. Connection failed 1 times. Most recent error: FirebaseError: [code=unavailable]: The operation could not be completed\nThis typically indicates that your device does not have a healthy Internet connection at the moment. The client will operate in offline mode until it is able to successfully connect to the backend."
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "POST",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=86554&CVER=22&X-HTTP-Session-Id=gsessionid&zx=u6htssz7wcq9&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "POST",
+          "url": "https://identitytoolkit.googleapis.com/v1/accounts:update?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "POST",
+          "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=VcQlsGC6M-0s-Y6_7dHO9Q&AID=0&CI=0&TYPE=xmlhttp&zx=pw1n7w2fm3zr&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "POST",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=954&AID=24&zx=psmicjf4d93e&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "POST",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=956&AID=24&zx=3dqiye7vywi&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=ptjNkDgBfNw94zCQozNz43tivCs4ahSPzDpGC1xOUw6_AXC_ftbn_g&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=cwo0YM6pH-Y1kAw-ukEDQg&AID=0&CI=0&TYPE=xmlhttp&zx=xxuoxdqkorca&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "POST",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=28454&CVER=22&X-HTTP-Session-Id=gsessionid&zx=4zfehyn4z5z1&t=1",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "requestStats": {
+        "auth": [
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:update?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          }
+        ],
+        "firestoreWrites": [],
+        "firestoreReads": [
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=86554&CVER=22&X-HTTP-Session-Id=gsessionid&zx=u6htssz7wcq9&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=946&CVER=22&X-HTTP-Session-Id=gsessionid&zx=hby80hqvxyau&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=947&AID=14&zx=ti7x9crhodbe&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=948&AID=14&zx=pt3fwlbn79hz&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=949&AID=14&zx=c2nwn265ii5i&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=950&AID=14&zx=ykow7gfdn1x&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=951&AID=24&zx=ms11j6p5wjk2&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=952&AID=24&zx=lujwbrq5lrku&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=953&AID=24&zx=o3agj1mf7e70&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=954&AID=24&zx=psmicjf4d93e&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=955&AID=24&zx=vlepl0iwc9fg&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=956&AID=24&zx=3dqiye7vywi&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&SID=VcQlsGC6M-0s-Y6_7dHO9Q&RID=957&TYPE=terminate&zx=1gtpa96ec84k"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=22389&CVER=22&X-HTTP-Session-Id=gsessionid&zx=g17sljtlt9mr&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=28454&CVER=22&X-HTTP-Session-Id=gsessionid&zx=4zfehyn4z5z1&t=1"
+          }
+        ],
+        "api": [],
+        "other": [
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=7JRHiPlKeQVuodghjTjMqnJhryOJFDAoxUrmeuQeW_WUn-s970WrNg&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=VcQlsGC6M-0s-Y6_7dHO9Q&AID=0&CI=0&TYPE=xmlhttp&zx=pw1n7w2fm3zr&t=1"
+          },
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=ptjNkDgBfNw94zCQozNz43tivCs4ahSPzDpGC1xOUw6_AXC_ftbn_g&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=cwo0YM6pH-Y1kAw-ukEDQg&AID=0&CI=0&TYPE=xmlhttp&zx=xxuoxdqkorca&t=1"
+          }
+        ]
+      }
+    },
+    "community": {
+      "status": "failed",
+      "checks": [
+        "Community list loaded."
+      ],
+      "failures": [
+        {
+          "message": "Unhandled community smoke error: locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Smoke Post 1772986959651') to be visible\u001b[22m\n",
+          "rootCause": "locator.waitFor: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Smoke Post 1772986959651') to be visible\u001b[22m\n\n    at waitForText (C:\\Users\\taseen\\Desktop\\Albaash\\haelr\\haelr\\output\\playwright\\smoke-test.cjs:122:48)\n    at main (C:\\Users\\taseen\\Desktop\\Albaash\\haelr\\haelr\\output\\playwright\\smoke-test.cjs:316:11)"
+        }
+      ],
+      "notes": [],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "POST",
+          "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "requestStats": {
+        "auth": [
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          }
+        ],
+        "firestoreWrites": [],
+        "firestoreReads": [
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=83979&CVER=22&X-HTTP-Session-Id=gsessionid&zx=os012wgncshl&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&SID=F9prbFjwB_8S46MFx98D9Q&RID=83980&AID=14&zx=rra0zv3nznkg&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&SID=F9prbFjwB_8S46MFx98D9Q&RID=83981&AID=15&zx=kuixmxnithot&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&SID=F9prbFjwB_8S46MFx98D9Q&RID=83982&AID=24&zx=viqgq58ukt2l&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&SID=F9prbFjwB_8S46MFx98D9Q&RID=83983&AID=31&zx=pjr80n5o2an0&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&SID=F9prbFjwB_8S46MFx98D9Q&RID=83984&AID=43&zx=vjnxhr5040z&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&SID=F9prbFjwB_8S46MFx98D9Q&RID=83985&AID=44&zx=eiz7yl4ozk1x&t=1"
+          }
+        ],
+        "api": [],
+        "other": [
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=F9prbFjwB_8S46MFx98D9Q&AID=0&CI=0&TYPE=xmlhttp&zx=6d5g7g4bl0uq&t=1"
+          }
+        ]
+      }
+    },
+    "assessment": {
+      "status": "failed",
+      "checks": [
+        "Assessment started."
+      ],
+      "failures": [
+        {
+          "message": "Unhandled assessment smoke error: locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Your Mental Health Assessment') to be visible\u001b[22m\n",
+          "rootCause": "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Your Mental Health Assessment') to be visible\u001b[22m\n\n    at waitForText (C:\\Users\\taseen\\Desktop\\Albaash\\haelr\\haelr\\output\\playwright\\smoke-test.cjs:122:48)\n    at main (C:\\Users\\taseen\\Desktop\\Albaash\\haelr\\haelr\\output\\playwright\\smoke-test.cjs:392:13)"
+        }
+      ],
+      "notes": [],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=F9prbFjwB_8S46MFx98D9Q&AID=0&CI=0&TYPE=xmlhttp&zx=6d5g7g4bl0uq&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=-k9lRJbbxw2gSmrVVNgxvk9W9oe0D0lF577ALtn1T9qj8qKvCYtX5g&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=OAh6a0Kd6dRWwkLFJglSIw&AID=0&CI=0&TYPE=xmlhttp&zx=ek7ofiwxqi84&t=1",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "requestStats": {
+        "auth": [
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          }
+        ],
+        "firestoreWrites": [],
+        "firestoreReads": [
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=29686&CVER=22&X-HTTP-Session-Id=gsessionid&zx=nsazbmvgkrfg&t=1"
+          }
+        ],
+        "api": [],
+        "other": [
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=okNAVcP6wyOd3re4y9gqtwk68zLTlpKEuFqJIz_IchqhUnkQ2auduQ&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=F9prbFjwB_8S46MFx98D9Q&AID=46&CI=0&TYPE=xmlhttp&zx=1bg5lda35qxi&t=1"
+          },
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=-k9lRJbbxw2gSmrVVNgxvk9W9oe0D0lF577ALtn1T9qj8qKvCYtX5g&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=OAh6a0Kd6dRWwkLFJglSIw&AID=0&CI=0&TYPE=xmlhttp&zx=ek7ofiwxqi84&t=1"
+          },
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=-k9lRJbbxw2gSmrVVNgxvk9W9oe0D0lF577ALtn1T9qj8qKvCYtX5g&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=OAh6a0Kd6dRWwkLFJglSIw&AID=4&CI=0&TYPE=xmlhttp&zx=242xfhm06si0&t=1"
+          }
+        ]
+      }
+    },
+    "mood-tracking": {
+      "status": "failed",
+      "checks": [
+        "Mood entry created and visible in history.",
+        "Mood history persisted after reload."
+      ],
+      "failures": [
+        {
+          "message": "Mood entry persisted in the UI, but no Firestore write was observed during the save.",
+          "rootCause": "The flow likely fell back to localStorage because authenticated Firestore persistence was unavailable."
+        }
+      ],
+      "notes": [],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=-k9lRJbbxw2gSmrVVNgxvk9W9oe0D0lF577ALtn1T9qj8qKvCYtX5g&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=OAh6a0Kd6dRWwkLFJglSIw&AID=4&CI=0&TYPE=xmlhttp&zx=242xfhm06si0&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "POST",
+          "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "requestStats": {
+        "auth": [
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          }
+        ],
+        "firestoreWrites": [],
+        "firestoreReads": [],
+        "api": [],
+        "other": [
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=-k9lRJbbxw2gSmrVVNgxvk9W9oe0D0lF577ALtn1T9qj8qKvCYtX5g&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=OAh6a0Kd6dRWwkLFJglSIw&AID=5&CI=0&TYPE=xmlhttp&zx=l2ktwaith2oe&t=1"
+          }
+        ]
+      }
+    },
+    "meditation": {
+      "status": "failed",
+      "checks": [
+        "Meditation session completed through the player and success toast appeared.",
+        "Observed Firestore write traffic while saving the meditation session."
+      ],
+      "failures": [
+        {
+          "message": "Meditation session count did not increase after completion.",
+          "rootCause": "Session storage or stats refresh may be broken."
+        }
+      ],
+      "notes": [],
+      "consoleErrors": [],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "POST",
+          "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "POST",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=15754&CVER=22&X-HTTP-Session-Id=gsessionid&zx=yycqd4y7em87&t=1",
+          "failure": "net::ERR_ABORTED"
+        },
+        {
+          "method": "GET",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=9_y4ApCYhzryYIv9nGNpqhGkH8gb6-dN7tDCaiWNnP1piqMi3ypdkw&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=0FrnKgdVh-hwwdbq8ru1ag&AID=0&CI=0&TYPE=xmlhttp&zx=5n33pzqquabu&t=1",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "requestStats": {
+        "auth": [
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          }
+        ],
+        "firestoreWrites": [
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=15754&CVER=22&X-HTTP-Session-Id=gsessionid&zx=yycqd4y7em87&t=1"
+          }
+        ],
+        "firestoreReads": [
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=94296&CVER=22&X-HTTP-Session-Id=gsessionid&zx=jlbnop980g79&t=1"
+          }
+        ],
+        "api": [],
+        "other": [
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=9_y4ApCYhzryYIv9nGNpqhGkH8gb6-dN7tDCaiWNnP1piqMi3ypdkw&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=0FrnKgdVh-hwwdbq8ru1ag&AID=0&CI=0&TYPE=xmlhttp&zx=5n33pzqquabu&t=1"
+          },
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=9_y4ApCYhzryYIv9nGNpqhGkH8gb6-dN7tDCaiWNnP1piqMi3ypdkw&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=0FrnKgdVh-hwwdbq8ru1ag&AID=4&CI=0&TYPE=xmlhttp&zx=ueyk0lb8ti11&t=1"
+          }
+        ]
+      }
+    },
+    "brain-training": {
+      "status": "failed",
+      "checks": [
+        "Brain training game started.",
+        "Brain training game session completed."
+      ],
+      "failures": [
+        {
+          "message": "Brain training session completed, but no Firestore write was observed during save.",
+          "rootCause": "The game result likely fell back to localStorage instead of cloud persistence."
+        },
+        {
+          "message": "Brain training progress did not show any saved sessions.",
+          "rootCause": "Session save or progress rebuild may be failing."
+        },
+        {
+          "message": "Brain training flow completed but emitted runtime or network errors.",
+          "rootCause": "Inspect console/page errors and failed requests collected for this flow."
+        }
+      ],
+      "notes": [],
+      "consoleErrors": [
+        "Error saving game result: FirebaseError: Function addDoc() called with invalid data. Unsupported field value: undefined (found in field reactionTime in document brain_training_sessions/UUpkQnMVMveYV3ynk8Bc)"
+      ],
+      "pageErrors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=4a2BfrKf9Q-_ua4NTdhXN8WSHKo9FWMuFZqWBrpy8xLs75hpEBknag&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=JfZJtj7Vj0HspWsYU5r9lg&AID=0&CI=0&TYPE=xmlhttp&zx=iga5q8x3xbl5&t=1",
+          "failure": "net::ERR_ABORTED"
+        }
+      ],
+      "requestStats": {
+        "auth": [
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          },
+          {
+            "method": "POST",
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyBCC49gSnF1WN0rn9gz6FOOLEkHAGUZZmQ"
+          }
+        ],
+        "firestoreWrites": [
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=25837&CVER=22&X-HTTP-Session-Id=gsessionid&zx=mrhozairpgtk&t=1"
+          },
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel?gsessionid=QC_jT0Z-reV4UsG-n3BBnubmNgLXVLitnMNKLHWScqEWW7huvKsZPQ&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=4hA8iifjfblHEEFjmAT2og&AID=0&CI=0&TYPE=xmlhttp&zx=yjek4swmria0&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Write/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=QC_jT0Z-reV4UsG-n3BBnubmNgLXVLitnMNKLHWScqEWW7huvKsZPQ&SID=4hA8iifjfblHEEFjmAT2og&RID=25838&AID=1&zx=l5ajeovm2325&t=1"
+          }
+        ],
+        "firestoreReads": [
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=2607&CVER=22&X-HTTP-Session-Id=gsessionid&zx=inck2tx0h9f3&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=31032&CVER=22&X-HTTP-Session-Id=gsessionid&zx=3itpufwigc5o&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=hp9DguZQS6sAI3DS7bPrZ791HgJ1R_F7icvW2OVfc_UNZNrVivi6Fw&SID=oQUpbEsgA2hkcipoTjdwNw&RID=31033&AID=11&zx=94l9mkk32ueh&t=1"
+          },
+          {
+            "method": "POST",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&gsessionid=hp9DguZQS6sAI3DS7bPrZ791HgJ1R_F7icvW2OVfc_UNZNrVivi6Fw&SID=oQUpbEsgA2hkcipoTjdwNw&RID=31034&AID=14&zx=tx8utmctqmeg&t=1"
+          }
+        ],
+        "api": [],
+        "other": [
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=4a2BfrKf9Q-_ua4NTdhXN8WSHKo9FWMuFZqWBrpy8xLs75hpEBknag&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=JfZJtj7Vj0HspWsYU5r9lg&AID=0&CI=0&TYPE=xmlhttp&zx=iga5q8x3xbl5&t=1"
+          },
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=4a2BfrKf9Q-_ua4NTdhXN8WSHKo9FWMuFZqWBrpy8xLs75hpEBknag&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=JfZJtj7Vj0HspWsYU5r9lg&AID=3&CI=0&TYPE=xmlhttp&zx=f0qlm6bynlsn&t=1"
+          },
+          {
+            "method": "GET",
+            "url": "https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=hp9DguZQS6sAI3DS7bPrZ791HgJ1R_F7icvW2OVfc_UNZNrVivi6Fw&VER=8&database=projects%2Fhaelr-462818%2Fdatabases%2F(default)&RID=rpc&SID=oQUpbEsgA2hkcipoTjdwNw&AID=0&CI=0&TYPE=xmlhttp&zx=adfi9i3pw0kz&t=1"
+          }
+        ]
+      }
+    }
+  },
+  "summary": {
+    "working": [],
+    "broken": [
+      "authentication",
+      "community",
+      "assessment",
+      "mood-tracking",
+      "meditation",
+      "brain-training"
+    ]
+  },
+  "finishedAt": "2026-03-08T16:25:00.064Z"
+}

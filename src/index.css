@@ -3,24 +3,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ROOT CAUSE (scroll “pinned” / locked): Diagnostic 3 — global scroll-snap.
+ * `body { scroll-snap-type: y mandatory }` + `section { scroll-snap-align: start }`
+ * forced every full-height section to snap on the y-axis site-wide, which feels
+ * like the page sticks at each section (esp. with Lenis + wheel). Not the brain
+ * or ScrollTrigger. Snap for carousels stays scoped (e.g. brain-training.css).
+ *
+ * Secondary: removed `scroll-behavior: smooth` on html/body so Lenis isn’t
+ * layered on top of native smooth scrolling (Diagnostic 6 / scroll contract).
+ */
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-html, body {
-  height: 100%;
-  scroll-behavior: smooth;
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  scroll-snap-type: y mandatory;
-  overflow-y: scroll;
-}
-
-section {
-  scroll-snap-align: start;
+  overflow-y: auto;
 }
 
 body::-webkit-scrollbar {
@@ -128,5 +134,16 @@ body::-webkit-scrollbar {
 
   .text-20px {
     font-size: 18px;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }

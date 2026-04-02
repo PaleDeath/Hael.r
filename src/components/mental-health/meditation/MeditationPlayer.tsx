@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Toast, { ToastType } from '../../ui/Toast';
 
 interface MeditationExercise {
   id: string;
@@ -107,9 +108,18 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
   const [remainingTime, setRemainingTime] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sessionCompleted, setSessionCompleted] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  // const [isSeeking, setIsSeeking] = useState(false); // Temporarily disabled
+  const [seekValue, setSeekValue] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const pausedTimeRef = useRef<number>(0); // Track total paused time
+  const pauseStartRef = useRef<number | null>(null);
+  const totalDurationRef = useRef<number>(0);
+  const isSeekingRef = useRef<boolean>(false);
 
   const categories = [
     { value: 'all', label: 'All Exercises' },
@@ -127,9 +137,18 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
   const startMeditation = (meditation: MeditationExercise) => {
     setCurrentMeditation(meditation);
     setIsPlaying(true);
-    setRemainingTime(meditation.duration * 60);
+    const totalSeconds = meditation.duration * 60;
+    setRemainingTime(totalSeconds);
     setProgress(0);
+    setSeekValue(0);
+    setElapsedSeconds(0);
     setSessionCompleted(false);
+    // setIsSeeking(false); // Temporarily disabled
+    isSeekingRef.current = false;
+    startTimeRef.current = Date.now();
+    pausedTimeRef.current = 0;
+    pauseStartRef.current = null;
+    totalDurationRef.current = totalSeconds;
     
     // In a real app, this would load and play the audio file
     if (audioRef.current) {
@@ -140,79 +159,181 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
       });
     }
     
-    // Start the countdown
+    // Start the countdown with precise second tracking
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = setInterval(() => {
-      setRemainingTime(prev => {
-        if (prev <= 1) {
-          console.log('Timer reached 0, completing session...');
-          endMeditation(true); // Explicitly pass true for completion
-          return 0;
-        }
-        return prev - 1;
-      });
+      // Don't update if user is seeking
+      if (isSeekingRef.current) return;
       
-      setProgress(prev => {
-        const newProgress = prev + (1 / (meditation.duration * 60)) * 100;
-        const finalProgress = Math.min(newProgress, 100);
+      // Calculate precise elapsed time (excluding paused time)
+      if (startTimeRef.current) {
+        const now = Date.now();
+        // Account for current pause if paused
+        const currentPauseTime = pauseStartRef.current ? (now - pauseStartRef.current) : 0;
+        const elapsedMs = now - startTimeRef.current - pausedTimeRef.current - currentPauseTime;
+        const elapsedSec = Math.floor(elapsedMs / 1000);
         
-        // If we've reached 100%, complete the session
-        if (finalProgress >= 100 && !sessionCompleted) {
-          console.log('Progress reached 100%, completing session...');
-          endMeditation(true); // Explicitly pass true for completion
+        setElapsedSeconds(elapsedSec);
+        
+        // Update remaining time
+        const newRemainingTime = Math.max(0, totalSeconds - elapsedSec);
+        setRemainingTime(newRemainingTime);
+        
+        // Update progress percentage
+        const newProgress = Math.min(100, (elapsedSec / totalSeconds) * 100);
+        setProgress(newProgress);
+        setSeekValue(newProgress);
+        
+        // Check completion thresholds
+        if (newRemainingTime <= 0 && !sessionCompleted) {
+          endMeditation(true, 'timer'); // Timer completed
+        } else if (newProgress >= 100 && !sessionCompleted) {
+          endMeditation(true, 'progress'); // Progress completed
         }
-        
-        return finalProgress;
-      });
-    }, 1000);
+      }
+    }, 100); // Update every 100ms for precision, but we round to seconds
   };
 
   const pauseMeditation = () => {
     setIsPlaying(false);
+    pauseStartRef.current = Date.now(); // Track when pause started
+    
     if (audioRef.current) {
       audioRef.current.pause();
     }
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    // Keep interval running to track paused time accurately
   };
 
   const resumeMeditation = () => {
+    // If no start time is set, this is a fresh start after stop - reset everything
+    if (!startTimeRef.current || elapsedSeconds === 0) {
+      // Start fresh session
+      if (currentMeditation) {
+        startMeditation(currentMeditation);
+      }
+      return;
+    }
+    
+    // Otherwise, resume from where we paused
     setIsPlaying(true);
+    // setIsSeeking(false); // Temporarily disabled
+    isSeekingRef.current = false;
+    
+    // Add paused time to total paused time
+    if (pauseStartRef.current) {
+      pausedTimeRef.current += Date.now() - pauseStartRef.current;
+      pauseStartRef.current = null;
+    }
+    
     if (audioRef.current) {
       audioRef.current.play().catch(console.error);
     }
     
-    if (currentMeditation && !intervalRef.current) {
+    // Restart interval if it's not running
+    if (!intervalRef.current && currentMeditation) {
+      const totalSeconds = currentMeditation.duration * 60;
       intervalRef.current = setInterval(() => {
-        setRemainingTime(prev => {
-          if (prev <= 1) {
-            endMeditation(true);
-            return 0;
-          }
-          return prev - 1;
-        });
+        // Don't update if user is seeking
+        if (isSeekingRef.current) return;
         
-        setProgress(prev => {
-          const newProgress = prev + (1 / (currentMeditation.duration * 60)) * 100;
-          return Math.min(newProgress, 100);
-        });
-      }, 1000);
+        // Calculate precise elapsed time (excluding paused time)
+        if (startTimeRef.current) {
+          const now = Date.now();
+          // Account for current pause if paused
+          const currentPauseTime = pauseStartRef.current ? (now - pauseStartRef.current) : 0;
+          const elapsedMs = now - startTimeRef.current - pausedTimeRef.current - currentPauseTime;
+          const elapsedSec = Math.floor(elapsedMs / 1000);
+          
+          setElapsedSeconds(elapsedSec);
+          
+          // Update remaining time
+          const newRemainingTime = Math.max(0, totalSeconds - elapsedSec);
+          setRemainingTime(newRemainingTime);
+          
+          // Update progress percentage
+          const newProgress = Math.min(100, (elapsedSec / totalSeconds) * 100);
+          setProgress(newProgress);
+          setSeekValue(newProgress);
+          
+          // Check completion thresholds
+          if (newRemainingTime <= 0 && !sessionCompleted) {
+            endMeditation(true, 'timer'); // Timer completed
+          } else if (newProgress >= 100 && !sessionCompleted) {
+            endMeditation(true, 'progress'); // Progress completed
+          }
+        }
+      }, 100); // Update every 100ms for precision
+    }
+  };
+  
+  const handleSeek = (newProgress: number) => {
+    if (!currentMeditation || !startTimeRef.current) return;
+    
+    // setIsSeeking(true); // Temporarily disabled
+    isSeekingRef.current = true;
+    const totalSeconds = currentMeditation.duration * 60;
+    const newProgressPercent = Math.max(0, Math.min(100, newProgress));
+    
+    // Calculate new elapsed seconds based on seek position
+    const newElapsedSeconds = Math.floor((newProgressPercent / 100) * totalSeconds);
+    const newRemainingTime = Math.max(0, totalSeconds - newElapsedSeconds);
+    
+    // Update progress and remaining time
+    setProgress(newProgressPercent);
+    setSeekValue(newProgressPercent);
+    setElapsedSeconds(newElapsedSeconds);
+    setRemainingTime(newRemainingTime);
+    
+    // Adjust startTimeRef to reflect the seek position
+    // This ensures precise tracking continues from the new position
+    const now = Date.now();
+    const adjustedStartTime = now - (newElapsedSeconds * 1000) - pausedTimeRef.current;
+    startTimeRef.current = adjustedStartTime;
+    
+    // Update audio position if available
+    if (audioRef.current && audioRef.current.duration) {
+      const newAudioTime = (newProgressPercent / 100) * audioRef.current.duration;
+      audioRef.current.currentTime = newAudioTime;
+    }
+    
+    // If remaining time is 0, complete the session
+    if (newRemainingTime <= 0 && !sessionCompleted) {
+      endMeditation(true, 'progress');
+    }
+  };
+  
+  const handleSeekEnd = () => {
+    // setIsSeeking(false); // Temporarily disabled
+    isSeekingRef.current = false;
+  };
+
+  const resetMeditation = () => {
+    // Reset all meditation state to start fresh
+    setProgress(0);
+    setSeekValue(0);
+    setElapsedSeconds(0);
+    setSessionCompleted(false);
+    // setIsSeeking(false); // Temporarily disabled
+    isSeekingRef.current = false;
+    if (currentMeditation) {
+      setRemainingTime(currentMeditation.duration * 60);
+    }
+    startTimeRef.current = null;
+    pausedTimeRef.current = 0;
+    pauseStartRef.current = null;
+    
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }
   };
 
-  const endMeditation = (completed = false) => {
-    console.log(`[Debug] endMeditation called with completed=${completed}`);
-    console.log(`[Debug] Current state:`, {
-      isPlaying,
-      progress,
-      remainingTime,
-      currentMeditation: currentMeditation?.title,
-      hasCallback: !!onSessionComplete,
-      sessionCompleted
-    });
-    
+  const endMeditation = (completed = false, reason: 'timer' | 'progress' | 'manual' | 'skip' = 'manual', shouldReset = false) => {
     // Stop all timers and audio
     setIsPlaying(false);
     if (intervalRef.current) {
@@ -224,43 +345,78 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
       audioRef.current.currentTime = 0;
     }
     
-    // Calculate if session should be considered complete
-    const progressThreshold = 80; // 80% completion threshold
-    const shouldMarkComplete = completed || progress >= progressThreshold;
+    // Calculate final elapsed time precisely
+    let finalElapsedSeconds = elapsedSeconds;
+    if (startTimeRef.current && !isSeekingRef.current) {
+      const now = Date.now();
+      // Account for current pause if paused
+      const currentPauseTime = pauseStartRef.current ? (now - pauseStartRef.current) : 0;
+      const elapsedMs = now - startTimeRef.current - pausedTimeRef.current - currentPauseTime;
+      finalElapsedSeconds = Math.floor(elapsedMs / 1000);
+    }
     
-    // Only handle completion if not already completed
+    // Determine if session should be counted as completed
+    // Only count as complete if:
+    // 1. Reason is NOT 'skip' (user explicitly skipped)
+    // 2. Progress is >= 80% (user reached completion threshold)
+    const MIN_COMPLETION_THRESHOLD = 80; // 80% minimum to count as completed
+    const isSkip = reason === 'skip';
+    const finalProgress = currentMeditation 
+      ? Math.min(100, (finalElapsedSeconds / totalDurationRef.current) * 100)
+      : progress;
+    const hasHighProgress = finalProgress >= MIN_COMPLETION_THRESHOLD;
+    const shouldMarkComplete = !isSkip && hasHighProgress;
+    
+    // Only handle completion if conditions are met and not already completed
     if (shouldMarkComplete && currentMeditation && onSessionComplete && !sessionCompleted) {
-      console.log('[Debug] All conditions met for session completion');
-      console.log('[Debug] Progress:', progress, 'Threshold:', progressThreshold);
-      
       // Set completed first to prevent double-calling
       setSessionCompleted(true);
       
       try {
-        // Calculate actual minutes completed based on progress
-        const minutesCompleted = Math.ceil((progress / 100) * currentMeditation.duration);
-        console.log(`[Debug] Calling onSessionComplete with ${minutesCompleted} minutes (${progress}% of ${currentMeditation.duration}min)`);
+        // Calculate precise time in decimal minutes (e.g., 75 seconds = 1.25 minutes)
+        // Round to 2 decimal places for precision
+        const minutesCompleted = Math.round((finalElapsedSeconds / 60) * 100) / 100;
         
-        // Call the callback with the actual minutes completed
-        onSessionComplete(minutesCompleted);
-        
-        // Show completion message
-        alert(`Meditation complete! ${minutesCompleted} minutes added to your stats.`);
+        // Only save if at least some time was completed (e.g., 1 second = 0.02 minutes)
+        if (finalElapsedSeconds > 0 && minutesCompleted > 0) {
+          // Call the callback with precise decimal minutes
+          onSessionComplete(minutesCompleted);
+          
+          // Format display message
+          const displayMinutes = Math.floor(minutesCompleted);
+          const displaySeconds = Math.round((minutesCompleted - displayMinutes) * 60);
+          let timeMessage = '';
+          if (displayMinutes > 0 && displaySeconds > 0) {
+            timeMessage = `${displayMinutes} minute${displayMinutes !== 1 ? 's' : ''} ${displaySeconds} second${displaySeconds !== 1 ? 's' : ''}`;
+          } else if (displayMinutes > 0) {
+            timeMessage = `${displayMinutes} minute${displayMinutes !== 1 ? 's' : ''}`;
+          } else {
+            timeMessage = `${displaySeconds} second${displaySeconds !== 1 ? 's' : ''}`;
+          }
+          
+          // Show success toast
+          setToast({
+            message: `Meditation complete! ${timeMessage} added to your stats.`,
+            type: 'success'
+          });
+        }
       } catch (error) {
-        console.error('[Debug] Error in onSessionComplete:', error);
-        alert('Error updating meditation stats. Please try again.');
+        console.error('Error in onSessionComplete:', error);
+        setToast({
+          message: 'Error updating meditation stats. Please try again.',
+          type: 'error'
+        });
       }
-    } else {
-      console.log('[Debug] Session completion conditions not met:', {
-        completed: shouldMarkComplete,
-        hasCurrentMeditation: !!currentMeditation,
-        hasOnSessionComplete: !!onSessionComplete,
-        sessionCompleted,
-        progress
-      });
+    } else if (isSkip && finalProgress > 0 && finalProgress < MIN_COMPLETION_THRESHOLD) {
+      // User explicitly skipped before reaching threshold, so we don't count it
     }
     
-    setProgress(100);
+    // Reset progress and state if skipping or if shouldReset is true
+    if (isSkip || shouldReset) {
+      resetMeditation();
+    } else if (completed) {
+      setProgress(100);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -282,8 +438,18 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] py-20 px-4">
-      <div className="max-w-4xl mx-auto">
+    <>
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+      
+      <div className="min-h-screen bg-[#F5F5F0] py-20 px-4">
+        <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-semibold">Guided Meditation</h1>
           <button
@@ -331,15 +497,70 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
               <h2 className="text-2xl font-medium mb-2">{currentMeditation.title}</h2>
               <p className="text-gray-600 mb-6">{currentMeditation.description}</p>
               
-              {/* Progress bar */}
-              <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
-                <div 
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-1000" 
-                  style={{ width: `${progress.toFixed(0)}%` }}
-                ></div>
+              {/* Progress bar / Slider */}
+              <div className="w-full mb-6">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={seekValue}
+                  onChange={(e) => handleSeek(parseFloat(e.target.value))}
+                  onMouseUp={handleSeekEnd}
+                  onTouchEnd={handleSeekEnd}
+                  className="w-full h-2.5 bg-gray-200 rounded-full appearance-none cursor-pointer slider"
+                  style={{
+                    background: `linear-gradient(to right, #2563eb 0%, #2563eb ${seekValue}%, #e5e7eb ${seekValue}%, #e5e7eb 100%)`
+                  }}
+                />
+                <style>{`
+                  .slider::-webkit-slider-thumb {
+                    appearance: none;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    background: #2563eb;
+                    cursor: pointer;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    transition: all 0.2s ease;
+                  }
+                  .slider::-webkit-slider-thumb:hover {
+                    background: #1d4ed8;
+                    transform: scale(1.1);
+                  }
+                  .slider::-moz-range-thumb {
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    background: #2563eb;
+                    cursor: pointer;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                    transition: all 0.2s ease;
+                  }
+                  .slider::-moz-range-thumb:hover {
+                    background: #1d4ed8;
+                    transform: scale(1.1);
+                  }
+                  .slider:active::-webkit-slider-thumb {
+                    transform: scale(1.2);
+                  }
+                  .slider:active::-moz-range-thumb {
+                    transform: scale(1.2);
+                  }
+                `}</style>
               </div>
               
-              <div className="text-lg font-medium mb-8">{formatTime(remainingTime)}</div>
+              <div className="flex items-center justify-between w-full mb-8">
+                <div className="text-sm text-gray-500 font-inter">
+                  {formatTime(Math.floor((seekValue / 100) * (currentMeditation.duration * 60)))}
+                </div>
+                <div className="text-lg font-medium font-inter">{formatTime(remainingTime)}</div>
+                <div className="text-sm text-gray-500 font-inter">
+                  {formatTime(currentMeditation.duration * 60)}
+                </div>
+              </div>
               
               <div className="flex items-center space-x-6">
                 {isPlaying ? (
@@ -365,11 +586,16 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
                 
                 <button
                   onClick={() => {
-                    // If we've made significant progress (over 80%), mark as complete
-                    const shouldComplete = progress >= 80;
-                    endMeditation(shouldComplete);
+                    // Stop button - check if we should mark as complete (80% threshold)
+                    const currentProgress = currentMeditation 
+                      ? Math.min(100, (elapsedSeconds / totalDurationRef.current) * 100)
+                      : progress;
+                    const shouldComplete = currentProgress >= 80;
+                    // Stop and reset - user can start fresh by clicking play again
+                    endMeditation(shouldComplete, shouldComplete ? 'manual' : 'skip', true);
                   }}
                   className="flex items-center justify-center w-16 h-16 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors"
+                  title="Stop meditation"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -387,11 +613,22 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
               
               <button
                 onClick={() => {
-                  endMeditation();
+                  // When switching exercises, always mark as skip (unless already completed)
+                  if (!sessionCompleted) {
+                    endMeditation(false, 'skip');
+                  }
                   setCurrentMeditation(null);
                   setProgress(0);
+                  setSeekValue(0);
+                  setElapsedSeconds(0);
+                  setSessionCompleted(false);
+                  // setIsSeeking(false); // Temporarily disabled
+                  isSeekingRef.current = false;
+                  startTimeRef.current = null;
+                  pausedTimeRef.current = 0;
+                  pauseStartRef.current = null;
                 }}
-                className="mt-8 text-blue-600 hover:text-blue-800"
+                className="mt-8 text-gray-600 hover:text-black font-inter text-sm transition-colors"
               >
                 Choose a Different Exercise
               </button>
@@ -451,7 +688,8 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onSessionComplete }
           Note: These are meditation audio by different creators.
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

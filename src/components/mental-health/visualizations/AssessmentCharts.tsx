@@ -22,9 +22,18 @@ interface TrendDataPoint {
 }
 
 const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
-  // Transform the data for trend visualization
+  const sorted = useMemo(
+    () =>
+      [...assessments].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      ),
+    [assessments]
+  );
+
+  // Transform the data for trend visualization (oldest → newest for lines)
   const trendData = useMemo(() => {
-    return assessments.map(assessment => {
+    const chronological = [...sorted].reverse();
+    return chronological.map(assessment => {
       const result: TrendDataPoint = {
         date: new Date(assessment.date).toLocaleDateString(),
       };
@@ -36,26 +45,26 @@ const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
       
       return result;
     });
-  }, [assessments]);
+  }, [sorted]);
 
   // Get the most recent assessment data for radar chart
   const radarData = useMemo(() => {
-    if (assessments.length === 0) return [];
+    if (sorted.length === 0) return [];
     
-    const latestAssessment = assessments[0]; // Assuming assessments are sorted by date (newest first)
+    const latestAssessment = sorted[0];
     
     return Object.entries(latestAssessment.result.categories).map(([category, data]) => ({
       subject: category.charAt(0).toUpperCase() + category.slice(1),
       score: data.score,
       fullMark: 10,
     }));
-  }, [assessments]);
+  }, [sorted]);
 
   // Prepare data for severity distribution chart
   const severityData = useMemo(() => {
     const counts = { low: 0, moderate: 0, high: 0 };
     
-    assessments.forEach(assessment => {
+    sorted.forEach(assessment => {
       Object.values(assessment.result.categories).forEach(category => {
         counts[category.severity]++;
       });
@@ -65,7 +74,7 @@ const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
       severity: severity.charAt(0).toUpperCase() + severity.slice(1),
       count
     }));
-  }, [assessments]);
+  }, [sorted]);
 
   // Colors for severity levels
   const SEVERITY_COLORS = {
@@ -86,7 +95,7 @@ const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
     return colorMap[category as MentalHealthCategory] || '#888888';
   };
 
-  if (assessments.length === 0) {
+  if (sorted.length === 0) {
     return <p className="text-center text-gray-500 my-8">No assessment data available for visualization</p>;
   }
 
@@ -102,10 +111,10 @@ const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis domain={[0, 10]} tickFormatter={(value) => value.toFixed(2)} />
-              <Tooltip formatter={(value: number) => value.toFixed(2)} />
+              <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+              <Tooltip formatter={(value: number) => `${Number(value).toFixed(0)}%`} />
               <Legend />
-              {Object.keys(assessments[0]?.result.categories || {}).map((category) => (
+              {Object.keys(sorted[0]?.result.categories || {}).map((category) => (
                 <Line
                   key={category}
                   type="monotone"
@@ -127,7 +136,7 @@ const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
               <RadarChart outerRadius="80%" data={radarData}>
                 <PolarGrid />
                 <PolarAngleAxis dataKey="subject" />
-                <PolarRadiusAxis domain={[0, 10]} tickFormatter={(value) => value.toFixed(2)} />
+                <PolarRadiusAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
                 <Radar
                   name="Mental Health Profile"
                   dataKey="score"
@@ -135,7 +144,7 @@ const AssessmentCharts: React.FC<AssessmentChartsProps> = ({ assessments }) => {
                   fill="#8884d8"
                   fillOpacity={0.6}
                 />
-                <Tooltip formatter={(value: number) => value.toFixed(2)} />
+                <Tooltip formatter={(value: number) => `${Number(value).toFixed(0)}%`} />
               </RadarChart>
             </ResponsiveContainer>
           </div>

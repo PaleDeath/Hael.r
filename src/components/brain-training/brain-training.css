@@ -1,0 +1,317 @@
+/* Scoped to .brain-training-root — hub + games */
+
+.brain-training-root {
+  --bt-correct: #059669;
+  --bt-wrong: #dc2626;
+  --bt-warning: #d97706;
+
+  --bt-hub-text: #1a1a1a;
+  --bt-hub-muted: #6b7280;
+  --bt-card-bg: #ffffff;
+  --bt-card-border: rgba(0, 0, 0, 0.06);
+  --bt-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.04);
+  --bt-card-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.06);
+
+  /* Shared legacies */
+  --bt-text: var(--bt-hub-text);
+  --bt-text-muted: var(--bt-hub-muted);
+  --bt-surface: rgba(255, 255, 255, 0.92);
+  --bt-surface-border: rgba(0, 0, 0, 0.08);
+  --bt-primary-from: #1a1a1a;
+  --bt-primary-to: #1a1a1a;
+  --bt-primary-gradient: linear-gradient(90deg, #1a1a1a, #1a1a1a);
+  --bt-success: #10b981;
+  --bt-success-glow: rgba(16, 185, 129, 0.35);
+  --bt-error: var(--bt-wrong);
+  --bt-error-soft: rgba(220, 38, 38, 0.25);
+  --bt-wait-bg: radial-gradient(circle at 50% 42%, #3d2a2a 0%, #1a1212 55%, #0d0a0a 100%);
+  --bt-go-bg: radial-gradient(circle at 50% 42%, #1f3d2e 0%, #0f1f17 55%, #0a0f0c 100%);
+  --bt-shadow-soft: var(--bt-card-shadow);
+  --bt-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+
+  font-family: 'Lexend Deca', system-ui, sans-serif;
+}
+
+.brain-training-root.bt-hub {
+  background-color: #f5f5f0;
+  color: var(--bt-hub-text);
+}
+
+.brain-training-root.bt-hub .bt-reset-btn {
+  color: #9ca3af;
+  border-color: #f3f4f6;
+  background: #ffffff;
+}
+
+.brain-training-root.bt-hub .bt-reset-btn:hover {
+  color: #4b5563;
+  background: #f9fafb;
+}
+
+/* Fullscreen shell — shared */
+.brain-training-root.bt-immersive-game {
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Light immersive: warm editorial (default for most games) */
+.brain-training-root.bt-immersive-game.bt-immersive-light {
+  background: linear-gradient(180deg, #f5f5f0 0%, #eeede8 100%);
+  color: #1a1a1a;
+  --bt-text: #1a1a1a;
+  --bt-text-muted: #6b7280;
+  --bt-game-text: #1a1a1a;
+  --bt-game-text-muted: #6b7280;
+  --bt-game-surface: #ffffff;
+  --bt-game-border: #e5e5e5;
+  --bt-glass-bg: #ffffff;
+  --bt-glass-border: rgba(0, 0, 0, 0.06);
+  --bt-glass-blur: 12px;
+}
+
+/* Dark immersive: premium glass (reaction, memory grid, sequence, rapid visual) */
+.brain-training-root.bt-immersive-game.bt-immersive-dark {
+  background: radial-gradient(ellipse 85% 75% at 50% 38%, #1a1c1e 0%, #141416 52%, #121214 100%);
+  color: #ffffff;
+  --bt-text: #ffffff;
+  --bt-text-muted: rgba(255, 255, 255, 0.5);
+  --bt-game-text: #ffffff;
+  --bt-game-text-muted: rgba(255, 255, 255, 0.5);
+  --bt-game-surface: rgba(255, 255, 255, 0.06);
+  --bt-game-border: rgba(255, 255, 255, 0.05);
+  --bt-game-surface-hover: rgba(255, 255, 255, 0.1);
+  --bt-glass-bg: rgba(255, 255, 255, 0.1);
+  --bt-glass-border: rgba(255, 255, 255, 0.08);
+  --bt-glass-blur: 16px;
+  --bt-shadow-soft: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.3);
+  --bt-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bt-overlay-fill {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
+  height: 100vh;
+}
+
+/* Frosted panels — hub / light contexts */
+.brain-training-root .bt-glass {
+  background: var(--bt-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--bt-surface-border);
+  box-shadow: var(--bt-card-shadow);
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-glass {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--bt-shadow-soft);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-light .bt-glass {
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  box-shadow: var(--bt-card-shadow);
+  backdrop-filter: none;
+}
+
+/* Stat / HUD pills */
+.brain-training-root .bt-glass-hud {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 0.375rem 0.75rem;
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-light .bt-glass-hud {
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  color: #374151;
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-glass-hud {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-light .bt-reset-btn {
+  color: #9ca3af;
+  border-color: #f3f4f6;
+  background: #ffffff;
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-light .bt-reset-btn:hover {
+  color: #4b5563;
+  background: #f9fafb;
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-reset-btn {
+  color: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-reset-btn:hover {
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Play card: light editorial */
+.bt-play-surface-light {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: var(--bt-card-shadow);
+}
+
+/* Play card: dark glass */
+.bt-play-surface-dark {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.bt-glass-dark {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: var(--bt-shadow-soft);
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-light .bt-glass-dark {
+  background: #ffffff;
+  border: 1px solid #f3f4f6;
+  color: #1a1a1a;
+  box-shadow: var(--bt-card-shadow);
+}
+
+/* Answer / option buttons — light */
+.bt-option-light {
+  min-height: 3rem;
+  border-radius: 12px;
+  border: 1px solid #e5e5e5;
+  background: #ffffff;
+  color: #1a1a1a;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bt-option-light:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.bt-option-light:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.bt-option-light--selected {
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #1a1a1a;
+}
+
+.bt-option-light--correct {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+
+.bt-option-light--wrong {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+/* Primary CTA — light */
+.bt-btn-solid {
+  min-height: 48px;
+  padding: 0 32px;
+  border-radius: 12px;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.bt-btn-solid:hover:not(:disabled) {
+  background: #333333;
+}
+
+.bt-btn-solid:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.bt-btn-outline {
+  min-height: 48px;
+  padding: 0 28px;
+  border-radius: 12px;
+  background: transparent;
+  color: #1a1a1a;
+  font-weight: 600;
+  border: 2px solid #1a1a1a;
+}
+
+.bt-btn-outline:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.bt-category-scroller {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bt-category-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.bt-category-chip {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* Thin progress track */
+.bt-progress-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-progress-track {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.bt-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: #1a1a1a;
+  transition: width 0.3s ease;
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-progress-fill {
+  background: rgba(255, 255, 255, 0.75);
+}
