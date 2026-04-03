@@ -49,6 +49,8 @@ interface HomePageProps {
 // never need to track mobile state internally.
 const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOut, handleEnter }) => {
   const { playSound } = useSoundManager();
+  const scrollRootRef = useRef<HTMLDivElement>(null);
+  const entranceRanRef = useRef(false);
 
   useEffect(() => {
     // Desktop-only parallax
@@ -70,6 +72,104 @@ const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOu
     });
   }, []); // runs once — DesktopHomePage is never shown on mobile
 
+  /* Hide homepage under overlay; no CSS transitions — GSAP only */
+  useEffect(() => {
+    const el = scrollRootRef.current;
+    if (!el) return;
+    if (isOverlayVisible) {
+      entranceRanRef.current = false;
+      gsap.set(el, { autoAlpha: 0, pointerEvents: 'none' });
+    } else {
+      gsap.set(el, { autoAlpha: 1, pointerEvents: 'auto' });
+    }
+  }, [isOverlayVisible]);
+
+  /* Choreography starts as overlay exits — content reads through the wipe */
+  useEffect(() => {
+    if (!isFadingOut) return;
+    const root = scrollRootRef.current;
+    if (!root) return;
+
+    gsap.set(root, { autoAlpha: 1, pointerEvents: 'auto' });
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline();
+      const brain = root.querySelector('.brain-canvas-wrapper');
+      if (brain) {
+        tl.fromTo(
+          brain,
+          { opacity: 0, scale: 0.95 },
+          { opacity: 1, scale: 1, duration: 1.2, ease: 'power3.out', overwrite: 'auto' },
+          0
+        );
+      }
+      const navEl = root.querySelector('nav[aria-label="Site navigation"]');
+      if (navEl) {
+        tl.fromTo(
+          navEl,
+          { y: -30, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out', overwrite: 'auto' },
+          0.15
+        );
+      }
+      const homeKids = root.querySelectorAll('#home > *');
+      if (homeKids.length) {
+        tl.fromTo(
+          homeKids,
+          { y: 40, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.9,
+            stagger: 0.12,
+            ease: 'power3.out',
+            overwrite: 'auto',
+          },
+          0.2
+        );
+      }
+      const logo = root.querySelector('#home .fixed');
+      if (logo) {
+        tl.fromTo(
+          logo,
+          { opacity: 0, x: -20 },
+          { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out', overwrite: 'auto' },
+          0.3
+        );
+      }
+      const belowHome = root.querySelectorAll('#home ~ .parallax-section');
+      if (belowHome.length) {
+        tl.fromTo(
+          belowHome,
+          { y: 60, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 1,
+            stagger: 0.08,
+            ease: 'power3.out',
+            overwrite: 'auto',
+          },
+          0.3
+        );
+      }
+    }, scrollRootRef);
+
+    return () => ctx.revert();
+  }, [isFadingOut]);
+
+  /* Overlay unmounted — refresh scroll measurements */
+  useEffect(() => {
+    if (isOverlayVisible || entranceRanRef.current) return;
+    entranceRanRef.current = true;
+
+    const ctx = gsap.context(() => {
+      ScrollTrigger.refresh();
+    }, scrollRootRef);
+
+    return () => ctx.revert();
+  }, [isOverlayVisible]);
+
   return (
     <div className="relative bg-[#F5F5F0]">
       <Helmet>
@@ -80,14 +180,13 @@ const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOu
 
       {isOverlayVisible && <Overlay onEnter={handleEnter} isFadingOut={isFadingOut} />}
       <div
+        ref={scrollRootRef}
         id="home-scroll-root"
-        className={`transition-opacity duration-1000 ${
-          isOverlayVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
+        className={isOverlayVisible ? 'pointer-events-none' : ''}
         onClick={() => playSound('click')}
       >
         <div
-          className="brain-canvas-wrapper pointer-events-none h-screen w-full fixed inset-0 z-10 transition-opacity duration-1000 [will-change:transform] [transform:translateZ(0)]"
+          className="brain-canvas-wrapper pointer-events-none h-screen w-full fixed inset-0 z-10 [will-change:transform] [transform:translateZ(0)]"
         >
           <CanvasContainer />
         </div>
