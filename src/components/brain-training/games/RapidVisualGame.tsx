@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -54,9 +55,13 @@ const RapidVisualGame: React.FC = () => {
     correct: false,
     message: ''
   });
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const symbols = ['●', '■', '▲', '◆', '★', '♦', '◎', '□', '△', '◇', '☆', '♠', '♥', '♣', '♪', '♫'];
-  const colors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280'];
+  const colors = ['#5f7daa', '#b85c5c', '#5c936f', '#c4a14e', '#8975ad', '#c0889a', '#6b6e78'];
 
   const generateTargets = useCallback(() => {
     const numTargets = 8 + (gameStats.level * 2); // Increase with level
@@ -116,6 +121,8 @@ const RapidVisualGame: React.FC = () => {
   }, [gameStats.level, symbols]);
 
   const startGame = useCallback(() => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameStartTime(Date.now());
     generateTargets();
     setGameStats(prev => ({
@@ -130,7 +137,7 @@ const RapidVisualGame: React.FC = () => {
       reactionTimes: []
     }));
     setShowTargets(true);
-  }, [generateTargets]);
+  }, [generateTargets, clearAll]);
 
   const handleTargetClick = (target: VisualTarget) => {
     if (!showTargets || target.clicked) return;
@@ -168,7 +175,7 @@ const RapidVisualGame: React.FC = () => {
         .every(t => t.id === target.id || t.clicked);
 
       if (allTargetsFound) {
-        setTimeout(() => {
+        trackTimeout(() => {
           generateNextRound();
         }, 1000);
       }
@@ -189,14 +196,14 @@ const RapidVisualGame: React.FC = () => {
       });
     }
 
-    setTimeout(() => {
+    trackTimeout(() => {
       setFeedback({ show: false, correct: false, message: '' });
     }, 1500);
   };
 
   const generateNextRound = () => {
     setShowTargets(false);
-    setTimeout(() => {
+    trackTimeout(() => {
       generateTargets();
       setShowTargets(true);
     }, 500);
@@ -211,6 +218,8 @@ const RapidVisualGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameStats({
       score: 0,
       level: 1,
@@ -230,35 +239,8 @@ const RapidVisualGame: React.FC = () => {
   };
 
   const endGame = useCallback(async () => {
-    // Use functional update to ensure we have the latest state
     setGameStats(prev => {
       if (prev.currentPhase === 'results') return prev;
-
-      const finalAccuracy = (prev.correctClicks + prev.incorrectClicks) > 0
-        ? Math.round((prev.correctClicks / (prev.correctClicks + prev.incorrectClicks)) * 100)
-        : 0;
-
-      const duration = Math.round((Date.now() - gameStartTime) / 1000);
-      const averageReactionTime = prev.reactionTimes.length > 0
-        ? Math.round(prev.reactionTimes.reduce((a, b) => a + b, 0) / prev.reactionTimes.length)
-        : 0;
-
-      // Save game results
-      saveResult({
-        gameType: 'rapid-visual',
-        score: prev.score,
-        level: prev.level,
-        accuracy: finalAccuracy,
-        duration: duration,
-        details: {
-          correctClicks: prev.correctClicks,
-          incorrectClicks: prev.incorrectClicks,
-          totalTargets: prev.totalTargets,
-          averageReactionTime: averageReactionTime,
-          topLevel: prev.level
-        }
-      });
-
       return {
         ...prev,
         currentPhase: 'results',
@@ -267,20 +249,46 @@ const RapidVisualGame: React.FC = () => {
     });
 
     setShowTargets(false);
-  }, [gameStartTime, saveResult]);
+  }, []);
+
+  useEffect(() => {
+    if (gameStats.currentPhase !== 'results' || hasSavedResultsRef.current) return;
+
+    hasSavedResultsRef.current = true;
+    const finalAccuracy = (gameStats.correctClicks + gameStats.incorrectClicks) > 0
+      ? Math.round((gameStats.correctClicks / (gameStats.correctClicks + gameStats.incorrectClicks)) * 100)
+      : 0;
+
+    const duration = Math.round((Date.now() - gameStartTime) / 1000);
+    const averageReactionTime = gameStats.reactionTimes.length > 0
+      ? Math.round(gameStats.reactionTimes.reduce((a, b) => a + b, 0) / gameStats.reactionTimes.length)
+      : 0;
+
+    saveResultRef.current({
+      gameType: 'rapid-visual',
+      score: gameStats.score,
+      level: gameStats.level,
+      accuracy: finalAccuracy,
+      duration,
+      details: {
+        correctClicks: gameStats.correctClicks,
+        incorrectClicks: gameStats.incorrectClicks,
+        totalTargets: gameStats.totalTargets,
+        averageReactionTime,
+        topLevel: gameStats.level
+      }
+    });
+  }, [gameStats, gameStartTime]);
 
   // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => {
           const newTimeRemaining = prev.timeRemaining - 1;
 
           if (newTimeRemaining <= 0) {
-            // Use setTimeout to ensure state update completes before calling endGame
-            setTimeout(() => endGame(), 0);
+            trackTimeout(() => endGame(), 0);
             return {
               ...prev,
               timeRemaining: 0,
@@ -294,10 +302,9 @@ const RapidVisualGame: React.FC = () => {
           };
         });
       }, 1000);
+      return () => untrack(id);
     }
-
-    return () => clearInterval(interval);
-  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame]);
+  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame, trackInterval, untrack, trackTimeout]);
 
   const accuracy = (gameStats.correctClicks + gameStats.incorrectClicks) > 0
     ? Math.round((gameStats.correctClicks / (gameStats.correctClicks + gameStats.incorrectClicks)) * 100)
@@ -340,7 +347,7 @@ const RapidVisualGame: React.FC = () => {
               <p className="mt-4 text-sm text-neutral-600 md:text-base">
                 Tap every target symbol as fast as you can. Wrong taps cost you; speed feeds your score.
               </p>
-              <div className="mt-6 rounded-xl border border-black/10 bg-[#fafaf7] p-5 text-left text-sm text-neutral-700">
+              <div className="bt-panel-warm mt-6 rounded-xl border border-black/10 p-5 text-left text-sm text-neutral-700">
                 <p className="font-medium text-neutral-900">Level {gameStats.level}</p>
                 <p className="mt-2">
                   {gameStats.level === 1 && '8 symbols, 2 targets.'}
@@ -385,8 +392,8 @@ const RapidVisualGame: React.FC = () => {
                     className={`absolute flex min-h-[44px] min-w-[44px] -translate-x-1/2 -translate-y-1/2 transform items-center justify-center text-4xl font-bold transition-all hover:scale-110 active:scale-95 md:text-5xl ${
                       target.clicked
                         ? target.isTarget
-                          ? 'scale-125 text-emerald-400'
-                          : 'text-red-400 opacity-50'
+                          ? 'scale-125 bt-feedback-text-correct'
+                          : 'bt-feedback-text-wrong opacity-50'
                         : ''
                     }`}
                     style={{

@@ -1,9 +1,29 @@
 /* Scoped to .brain-training-root — hub + games */
 
 .brain-training-root {
-  --bt-correct: #059669;
-  --bt-wrong: #dc2626;
-  --bt-warning: #d97706;
+  /* Editorial feedback — muted sage & terracotta (not pure RGB) */
+  --bt-correct: #3f6f52;
+  --bt-wrong: #a84848;
+  --bt-warning: #a67c29;
+  --bt-feedback-text-correct: #2d5a3c;
+  --bt-feedback-text-wrong: #7a3838;
+  --bt-feedback-border-correct: rgba(63, 111, 82, 0.35);
+  --bt-feedback-border-wrong: rgba(168, 72, 72, 0.35);
+  --bt-feedback-text-correct-on-dark: #9fd4ae;
+  --bt-feedback-text-wrong-on-dark: #e8b4b4;
+  --bt-panel-warm: #faf9f5;
+  --bt-timer-warn: #b45309;
+  --bt-timer-urgent: #a84848;
+
+  /* Simon / grid tones (distinct but not neon) */
+  --bt-seq-0: #5f7daa;
+  --bt-seq-1: #b85c5c;
+  --bt-seq-2: #5c936f;
+  --bt-seq-3: #c4a14e;
+  --bt-seq-4: #8975ad;
+  --bt-seq-5: #c17d52;
+  --bt-seq-6: #c0889a;
+  --bt-seq-7: #5a5d8f;
 
   --bt-hub-text: #1a1a1a;
   --bt-hub-muted: #6b7280;
@@ -20,10 +40,10 @@
   --bt-primary-from: #1a1a1a;
   --bt-primary-to: #1a1a1a;
   --bt-primary-gradient: linear-gradient(90deg, #1a1a1a, #1a1a1a);
-  --bt-success: #10b981;
-  --bt-success-glow: rgba(16, 185, 129, 0.35);
+  --bt-success: var(--bt-correct);
+  --bt-success-glow: rgba(63, 111, 82, 0.28);
   --bt-error: var(--bt-wrong);
-  --bt-error-soft: rgba(220, 38, 38, 0.25);
+  --bt-error-soft: rgba(168, 72, 72, 0.18);
   --bt-wait-bg: radial-gradient(circle at 50% 42%, #3d2a2a 0%, #1a1212 55%, #0d0a0a 100%);
   --bt-go-bg: radial-gradient(circle at 50% 42%, #1f3d2e 0%, #0f1f17 55%, #0a0f0c 100%);
   --bt-shadow-soft: var(--bt-card-shadow);
@@ -228,16 +248,56 @@
 }
 
 .bt-option-light--correct {
-  background: #ecfdf5;
-  border-color: #6ee7b7;
-  color: #047857;
+  background: #eef4ef;
+  border-color: #9cb8a4;
+  color: var(--bt-feedback-text-correct);
 }
 
 .bt-option-light--wrong {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #b91c1c;
+  background: #f7efee;
+  border-color: #d4a5a5;
+  color: var(--bt-feedback-text-wrong);
 }
+
+/* Inline copy feedback (replaces harsh Tailwind emerald/red) */
+.brain-training-root .bt-feedback-text-correct {
+  color: var(--bt-feedback-text-correct);
+}
+
+.brain-training-root .bt-feedback-text-wrong {
+  color: var(--bt-feedback-text-wrong);
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-feedback-text-correct {
+  color: var(--bt-feedback-text-correct-on-dark);
+}
+
+.brain-training-root.bt-immersive-game.bt-immersive-dark .bt-feedback-text-wrong {
+  color: var(--bt-feedback-text-wrong-on-dark);
+}
+
+.brain-training-root .bt-feedback-border-correct {
+  border-color: var(--bt-feedback-border-correct);
+}
+
+.brain-training-root .bt-feedback-border-wrong {
+  border-color: var(--bt-feedback-border-wrong);
+}
+
+/* Warm panels (instructions / reading blocks) */
+.brain-training-root .bt-panel-warm {
+  background-color: var(--bt-panel-warm);
+}
+
+/* Sequence-recall color pads */
+.brain-training-root .bt-seq-0 { background-color: var(--bt-seq-0); }
+.brain-training-root .bt-seq-1 { background-color: var(--bt-seq-1); }
+.brain-training-root .bt-seq-2 { background-color: var(--bt-seq-2); }
+.brain-training-root .bt-seq-3 { background-color: var(--bt-seq-3); }
+.brain-training-root .bt-seq-4 { background-color: var(--bt-seq-4); }
+.brain-training-root .bt-seq-5 { background-color: var(--bt-seq-5); }
+.brain-training-root .bt-seq-6 { background-color: var(--bt-seq-6); }
+.brain-training-root .bt-seq-7 { background-color: var(--bt-seq-7); }
 
 /* Primary CTA — light */
 .bt-btn-solid {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -18,6 +19,18 @@ interface ColorWord {
   color: string;
   isMatch: boolean;
 }
+
+/** Ink-friendly saturations (pairs with --bt-* in brain-training.css) */
+const STROOP_COLORS = [
+  { name: 'RED', hex: '#b85c5c' },
+  { name: 'BLUE', hex: '#4a6fa5' },
+  { name: 'GREEN', hex: '#4d8f63' },
+  { name: 'YELLOW', hex: '#c9a227' },
+  { name: 'PURPLE', hex: '#6b4d7a' },
+  { name: 'ORANGE', hex: '#c9855a' },
+  { name: 'PINK', hex: '#c98fa8' },
+  { name: 'BROWN', hex: '#7a5240' }
+] as const;
 
 const ColorMatchGame: React.FC = () => {
   const navigate = useNavigate();
@@ -41,37 +54,32 @@ const ColorMatchGame: React.FC = () => {
   });
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [countdown, setCountdown] = useState(3);
-
-  const colors = [
-    { name: 'RED', hex: '#FF0000' },
-    { name: 'BLUE', hex: '#0000FF' },
-    { name: 'GREEN', hex: '#00FF00' },
-    { name: 'YELLOW', hex: '#FFFF00' },
-    { name: 'PURPLE', hex: '#800080' },
-    { name: 'ORANGE', hex: '#FFA500' },
-    { name: 'PINK', hex: '#FFC0CB' },
-    { name: 'BROWN', hex: '#A52A2A' }
-  ];
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const generateWord = useCallback((): ColorWord => {
-    const textIndex = Math.floor(Math.random() * colors.length);
-    const colorIndex = Math.floor(Math.random() * colors.length);
+    const textIndex = Math.floor(Math.random() * STROOP_COLORS.length);
+    const colorIndex = Math.floor(Math.random() * STROOP_COLORS.length);
 
     return {
-      text: colors[textIndex].name,
-      color: colors[colorIndex].hex,
+      text: STROOP_COLORS[textIndex].name,
+      color: STROOP_COLORS[colorIndex].hex,
       isMatch: textIndex === colorIndex
     };
-  }, [colors]);
+  }, []);
 
   const startGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameState('countdown');
     setCountdown(3);
 
-    const countdownTimer = setInterval(() => {
+    const id = trackInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          clearInterval(countdownTimer);
+          untrack(id);
           setGameState('playing');
           setTimeLeft(60);
           nextWord();
@@ -141,43 +149,48 @@ const ColorMatchGame: React.FC = () => {
       }
     }
 
-    // Level up every 10 correct answers
-    if (stats.correctAnswers > 0 && (stats.correctAnswers + (isCorrect ? 1 : 0)) % 10 === 0) {
-      setLevel(prev => prev + 1);
+    if (isCorrect) {
+      const newCorrectCount = stats.correctAnswers + 1;
+      if (newCorrectCount > 0 && newCorrectCount % 10 === 0) {
+        setLevel(prev => prev + 1);
+      }
     }
 
-    setTimeout(() => {
+    trackTimeout(() => {
       nextWord();
     }, 800);
   };
 
-  // Game timer
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
-      const timer = setTimeout(() => {
+      const id = trackTimeout(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
-      return () => clearTimeout(timer);
-    } else if (gameState === 'playing' && timeLeft === 0) {
-      setGameState('results');
-
-      const accuracy = stats.totalAnswers > 0 ? (stats.correctAnswers / stats.totalAnswers * 100) : 0;
-
-      saveResult({
-        gameType: 'color-match',
-        score: score,
-        level: level,
-        accuracy: Math.round(accuracy),
-        duration: 60,
-        details: {
-          correctAnswers: stats.correctAnswers,
-          totalAnswers: stats.totalAnswers,
-          streak: stats.streak,
-          avgReactionTime: stats.avgReactionTime
-        }
-      });
+      return () => untrack(id);
     }
-  }, [gameState, timeLeft, stats, score, level, saveResult]);
+    if (gameState === 'playing' && timeLeft === 0) {
+      setGameState('results');
+    }
+  }, [gameState, timeLeft, trackTimeout, untrack]);
+
+  useEffect(() => {
+    if (gameState !== 'results' || hasSavedResultsRef.current) return;
+    hasSavedResultsRef.current = true;
+    const accuracy = stats.totalAnswers > 0 ? (stats.correctAnswers / stats.totalAnswers * 100) : 0;
+    saveResultRef.current({
+      gameType: 'color-match',
+      score,
+      level,
+      accuracy: Math.round(accuracy),
+      duration: 60,
+      details: {
+        correctAnswers: stats.correctAnswers,
+        totalAnswers: stats.totalAnswers,
+        streak: stats.streak,
+        avgReactionTime: stats.avgReactionTime
+      }
+    });
+  }, [gameState, stats, score, level]);
 
   // Timer animation
   useEffect(() => {
@@ -185,7 +198,7 @@ const ColorMatchGame: React.FC = () => {
       if (timeLeft <= 10) {
         gsap.to(timerRef.current, {
           scale: 1.1,
-          color: timeLeft <= 5 ? '#FF0000' : '#FF6600',
+          color: timeLeft <= 5 ? '#a84848' : '#b45309',
           duration: 0.5,
           yoyo: true,
           ease: "power2.inOut"
@@ -195,6 +208,8 @@ const ColorMatchGame: React.FC = () => {
   }, [timeLeft, gameState]);
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameState('menu');
     setScore(0);
     setLevel(1);
@@ -268,7 +283,7 @@ const ColorMatchGame: React.FC = () => {
             {feedback && (
               <div
                 className={`mt-6 text-center text-lg font-medium ${
-                  feedback === 'correct' ? 'text-emerald-600' : 'text-red-600'
+                  feedback === 'correct' ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback === 'correct' ? 'Correct' : 'Incorrect'}

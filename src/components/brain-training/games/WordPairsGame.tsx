@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -24,6 +25,7 @@ interface GameStats {
 const WordPairsGame: React.FC = () => {
   const navigate = useNavigate();
   const { saveResult } = useGameResult();
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
@@ -179,10 +181,9 @@ const WordPairsGame: React.FC = () => {
         : `Incorrect. ${currentTestPair.word1} pairs with ${currentTestPair.word2}`
     });
 
-    setTimeout(() => {
+    trackTimeout(() => {
       setFeedback({ show: false, correct: false, message: '' });
       if (gameStats.totalAttempts + 1 >= wordPairs.length) {
-        // Round complete
         endGame();
       } else {
         startTestPhase();
@@ -201,6 +202,7 @@ const WordPairsGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
     setGameStats({
       score: 0,
       level: 1,
@@ -216,23 +218,19 @@ const WordPairsGame: React.FC = () => {
     setFeedback({ show: false, correct: false, message: '' });
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => {
           const newTimeRemaining = prev.timeRemaining - 1;
 
           if (newTimeRemaining <= 0) {
             if (prev.currentPhase === 'study') {
-              // Use setTimeout to avoid state update during render
-              setTimeout(() => startTestPhase(), 0);
+              trackTimeout(() => startTestPhase(), 0);
               return prev;
-            } else if (prev.currentPhase === 'test') {
-              // Use setTimeout to avoid state update during render
-              setTimeout(() => handleAnswerSelect(''), 0); // Time's up, wrong answer
+            }
+            if (prev.currentPhase === 'test') {
+              trackTimeout(() => handleAnswerSelect(''), 0);
               return prev;
             }
           }
@@ -243,10 +241,9 @@ const WordPairsGame: React.FC = () => {
           };
         });
       }, 1000);
+      return () => untrack(id);
     }
-
-    return () => clearInterval(interval);
-  }, [gameStats.isGameActive, gameStats.timeRemaining, gameStats.currentPhase, startTestPhase]); // Added startTestPhase to dependencies
+  }, [gameStats.isGameActive, gameStats.timeRemaining, gameStats.currentPhase, startTestPhase, trackInterval, untrack, trackTimeout]);
 
   const accuracy = gameStats.totalAttempts > 0
     ? Math.round((gameStats.correctMatches / gameStats.totalAttempts) * 100)
@@ -389,7 +386,7 @@ const WordPairsGame: React.FC = () => {
             <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow-xl">
               <p
                 className={`text-base font-medium ${
-                  feedback.correct ? 'text-emerald-600' : 'text-red-600'
+                  feedback.correct ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback.message}

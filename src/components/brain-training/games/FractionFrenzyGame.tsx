@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -36,6 +37,10 @@ interface GameStats {
 const FractionFrenzyGame: React.FC = () => {
   const navigate = useNavigate();
   const { saveResult } = useGameResult();
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
@@ -89,14 +94,21 @@ const FractionFrenzyGame: React.FC = () => {
 
     const correctAnswer = fractionToString(simplifiedNum, simplifiedDen);
 
-    // Generate wrong answers
-    const wrongAnswers = [
-      fractionToString(num1 + num2, den1 + den2), // Common mistake
-      fractionToString(resultNum, resultDen), // Unsimplified
-      fractionToString(simplifiedNum + 1, simplifiedDen), // Off by 1
-    ].filter(ans => ans !== correctAnswer);
+    const wrongSet = new Set<string>();
+    wrongSet.add(fractionToString(num1 + num2, den1 + den2, false));
+    wrongSet.add(fractionToString(resultNum, resultDen, false));
+    wrongSet.add(fractionToString(simplifiedNum + 1, simplifiedDen));
+    wrongSet.delete(correctAnswer);
+    while (wrongSet.size < 3) {
+      const offset = Math.floor(Math.random() * 3) + 1;
+      const candidate = fractionToString(
+        simplifiedNum + (Math.random() > 0.5 ? offset : -offset),
+        simplifiedDen
+      );
+      if (candidate !== correctAnswer) wrongSet.add(candidate);
+    }
 
-    const options = [correctAnswer, ...wrongAnswers.slice(0, 3)]
+    const options = [correctAnswer, ...Array.from(wrongSet).slice(0, 3)]
       .sort(() => 0.5 - Math.random());
 
     return {
@@ -116,25 +128,38 @@ const FractionFrenzyGame: React.FC = () => {
 
   const generateSubtractionProblem = (difficulty: number): FractionProblem => {
     const maxDenom = Math.min(4 + difficulty * 2, 12);
-    const den1 = Math.floor(Math.random() * maxDenom) + 2;
-    const den2 = Math.floor(Math.random() * maxDenom) + 2;
-    const num1 = Math.floor(Math.random() * (den1 - 1)) + 2; // Ensure positive result
-    const num2 = Math.floor(Math.random() * Math.min(num1, den2 - 1)) + 1;
+    let den1 = Math.floor(Math.random() * maxDenom) + 2;
+    let den2 = Math.floor(Math.random() * maxDenom) + 2;
+    let num1 = Math.floor(Math.random() * (den1 - 1)) + 2;
+    let num2 = Math.floor(Math.random() * Math.min(num1, den2 - 1)) + 1;
 
-    // Calculate result: num1/den1 - num2/den2
-    const resultNum = num1 * den2 - num2 * den1;
-    const resultDen = den1 * den2;
+    let resultNum = num1 * den2 - num2 * den1;
+    let resultDen = den1 * den2;
+    if (resultNum < 0) {
+      [num1, den1, num2, den2] = [num2, den2, num1, den1];
+      resultNum = num1 * den2 - num2 * den1;
+      resultDen = den1 * den2;
+    }
+
     const [simplifiedNum, simplifiedDen] = simplifyFraction(resultNum, resultDen);
 
     const correctAnswer = fractionToString(simplifiedNum, simplifiedDen);
 
-    const wrongAnswers = [
-      fractionToString(Math.abs(num1 - num2), Math.abs(den1 - den2)), // Common mistake
-      fractionToString(resultNum, resultDen), // Unsimplified
-      fractionToString(simplifiedNum + 1, simplifiedDen), // Off by 1
-    ].filter(ans => ans !== correctAnswer);
+    const wrongSet = new Set<string>();
+    wrongSet.add(fractionToString(Math.abs(num1 - num2), Math.abs(den1 - den2), false));
+    wrongSet.add(fractionToString(resultNum, resultDen, false));
+    wrongSet.add(fractionToString(simplifiedNum + 1, simplifiedDen));
+    wrongSet.delete(correctAnswer);
+    while (wrongSet.size < 3) {
+      const offset = Math.floor(Math.random() * 3) + 1;
+      const candidate = fractionToString(
+        simplifiedNum + (Math.random() > 0.5 ? offset : -offset),
+        simplifiedDen
+      );
+      if (candidate !== correctAnswer) wrongSet.add(candidate);
+    }
 
-    const options = [correctAnswer, ...wrongAnswers.slice(0, 3)]
+    const options = [correctAnswer, ...Array.from(wrongSet).slice(0, 3)]
       .sort(() => 0.5 - Math.random());
 
     return {
@@ -168,13 +193,21 @@ const FractionFrenzyGame: React.FC = () => {
 
     const correctAnswer = fractionToString(simplifiedNum, simplifiedDen);
 
-    const wrongAnswers = [
-      fractionToString(num1 * num2, den1 + den2), // Wrong operation
-      fractionToString(resultNum, resultDen), // Unsimplified
-      fractionToString(num1 + num2, den1 * den2), // Mixed up
-    ].filter(ans => ans !== correctAnswer);
+    const wrongSet = new Set<string>();
+    wrongSet.add(fractionToString(num1 * num2, den1 + den2, false));
+    wrongSet.add(fractionToString(resultNum, resultDen, false));
+    wrongSet.add(fractionToString(num1 + num2, den1 * den2, false));
+    wrongSet.delete(correctAnswer);
+    while (wrongSet.size < 3) {
+      const offset = Math.floor(Math.random() * 3) + 1;
+      const candidate = fractionToString(
+        simplifiedNum + (Math.random() > 0.5 ? offset : -offset),
+        simplifiedDen
+      );
+      if (candidate !== correctAnswer) wrongSet.add(candidate);
+    }
 
-    const options = [correctAnswer, ...wrongAnswers.slice(0, 3)]
+    const options = [correctAnswer, ...Array.from(wrongSet).slice(0, 3)]
       .sort(() => 0.5 - Math.random());
 
     return {
@@ -297,6 +330,8 @@ const FractionFrenzyGame: React.FC = () => {
   }, [gameStats.level]);
 
   const startGame = useCallback(() => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     generateProblem();
     setGameStats(prev => ({
       ...prev,
@@ -308,21 +343,24 @@ const FractionFrenzyGame: React.FC = () => {
       currentStreak: 0,
       totalTime: 0
     }));
-  }, [generateProblem]);
+  }, [generateProblem, clearAll]);
 
   const endGame = useCallback(() => {
     setGameStats(prev => ({ ...prev, isGameActive: false, currentPhase: 'results' }));
+  }, []);
 
+  useEffect(() => {
+    if (gameStats.currentPhase !== 'results' || hasSavedResultsRef.current) return;
+    hasSavedResultsRef.current = true;
     const accuracy = gameStats.totalQuestions > 0
       ? Math.round((gameStats.correctAnswers / gameStats.totalQuestions) * 100)
       : 0;
-
-    saveResult({
+    saveResultRef.current({
       gameType: 'fraction-frenzy',
       score: gameStats.score,
       level: gameStats.level,
-      accuracy: accuracy,
-      duration: 120 + (gameStats.level * 15) - gameStats.timeRemaining,
+      accuracy,
+      duration: 120 + gameStats.level * 15 - gameStats.timeRemaining,
       details: {
         correctAnswers: gameStats.correctAnswers,
         totalQuestions: gameStats.totalQuestions,
@@ -330,7 +368,7 @@ const FractionFrenzyGame: React.FC = () => {
         bestStreak: gameStats.bestStreak
       }
     });
-  }, [gameStats, saveResult]);
+  }, [gameStats]);
 
   const handleAnswer = (answer: string) => {
     if (!currentProblem) return;
@@ -370,7 +408,7 @@ const FractionFrenzyGame: React.FC = () => {
         : `Incorrect. The answer was ${currentProblem.correctAnswer}`
     });
 
-    setTimeout(() => {
+    trackTimeout(() => {
       setFeedback({ show: false, correct: false, message: '' });
       if (newTotalQuestions >= 15) {
         endGame();
@@ -390,6 +428,8 @@ const FractionFrenzyGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameStats({
       score: 0,
       level: 1,
@@ -407,23 +447,20 @@ const FractionFrenzyGame: React.FC = () => {
     setFeedback({ show: false, correct: false, message: '' });
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => ({
           ...prev,
           timeRemaining: prev.timeRemaining - 1
         }));
       }, 1000);
-    } else if (gameStats.timeRemaining === 0 && gameStats.isGameActive) {
+      return () => untrack(id);
+    }
+    if (gameStats.timeRemaining === 0 && gameStats.isGameActive) {
       endGame();
     }
-
-    return () => clearInterval(interval);
-  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame]);
+  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame, trackInterval, untrack]);
 
   const accuracy = gameStats.totalQuestions > 0
     ? Math.round((gameStats.correctAnswers / gameStats.totalQuestions) * 100)
@@ -463,7 +500,7 @@ const FractionFrenzyGame: React.FC = () => {
               <p className="mt-4 text-sm text-neutral-600 md:text-base">
                 Add, subtract, multiply, compare, and simplify fractions. Difficulty scales with your level.
               </p>
-              <div className="mt-6 rounded-xl border border-black/10 bg-[#fafaf7] p-5 text-left text-sm text-neutral-700">
+              <div className="bt-panel-warm mt-6 rounded-xl border border-black/10 p-5 text-left text-sm text-neutral-700">
                 <p className="font-medium text-neutral-900">Level {gameStats.level}</p>
                 <p className="mt-2">
                   {gameStats.level === 1 && 'Addition and simplification.'}
@@ -552,7 +589,7 @@ const FractionFrenzyGame: React.FC = () => {
               </p>
               <p
                 className={`mt-4 text-lg font-semibold ${
-                  feedback.correct ? 'text-emerald-600' : 'text-red-600'
+                  feedback.correct ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback.message}

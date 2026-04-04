@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RotateCcw, Shuffle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -26,6 +27,10 @@ interface FoundWord {
 const WordBuilderGame: React.FC = () => {
   const navigate = useNavigate();
   const { saveResult } = useGameResult();
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
@@ -114,13 +119,17 @@ const WordBuilderGame: React.FC = () => {
 
   const endGame = useCallback(() => {
     setGameStats(prev => ({ ...prev, isGameActive: false, currentPhase: 'results' }));
+  }, []);
 
-    saveResult({
+  useEffect(() => {
+    if (gameStats.currentPhase !== 'results' || hasSavedResultsRef.current) return;
+    hasSavedResultsRef.current = true;
+    saveResultRef.current({
       gameType: 'word-builder',
       score: gameStats.score,
       level: gameStats.level,
-      accuracy: 100, // All found words are valid
-      duration: 120 + (gameStats.level * 15) - gameStats.timeRemaining,
+      accuracy: 100,
+      duration: 120 + gameStats.level * 15 - gameStats.timeRemaining,
       details: {
         wordsFound: foundWords.length,
         longestWord: gameStats.maxWordLength,
@@ -128,7 +137,7 @@ const WordBuilderGame: React.FC = () => {
         averageWordLength: foundWords.length > 0 ? foundWords.reduce((sum, w) => sum + w.word.length, 0) / foundWords.length : 0
       }
     });
-  }, [gameStats, foundWords, saveResult]);
+  }, [gameStats, foundWords]);
 
   const submitWord = () => {
     if (currentWord.length < 3) {
@@ -137,7 +146,7 @@ const WordBuilderGame: React.FC = () => {
         message: 'Words must be at least 3 letters long!',
         type: 'error'
       });
-      setTimeout(() => setFeedback({ show: false, message: '', type: 'success' }), 2000);
+      trackTimeout(() => setFeedback({ show: false, message: '', type: 'success' }), 2000);
       return;
     }
 
@@ -148,7 +157,7 @@ const WordBuilderGame: React.FC = () => {
         message: 'Word already found!',
         type: 'error'
       });
-      setTimeout(() => setFeedback({ show: false, message: '', type: 'success' }), 2000);
+      trackTimeout(() => setFeedback({ show: false, message: '', type: 'success' }), 2000);
       return;
     }
 
@@ -191,10 +200,12 @@ const WordBuilderGame: React.FC = () => {
       setGameStats(prev => ({ ...prev, streak: 0 })); // Reset streak
     }
 
-    setTimeout(() => setFeedback({ show: false, message: '', type: 'success' }), 2000);
+    trackTimeout(() => setFeedback({ show: false, message: '', type: 'success' }), 2000);
   };
 
   const startGame = useCallback(() => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     const letters = getLettersForLevel(gameStats.level);
     setAvailableLetters(letters);
     setCurrentWord('');
@@ -209,9 +220,11 @@ const WordBuilderGame: React.FC = () => {
       wordsFound: 0,
 
     }));
-  }, [gameStats.level, getLettersForLevel]);
+  }, [gameStats.level, getLettersForLevel, clearAll]);
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameStats({
       score: 0,
       level: 1,
@@ -237,18 +250,14 @@ const WordBuilderGame: React.FC = () => {
     }));
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => {
           const newTimeRemaining = prev.timeRemaining - 1;
 
           if (newTimeRemaining <= 0) {
-            // Use setTimeout to ensure state update completes before calling endGame
-            setTimeout(() => endGame(), 0);
+            trackTimeout(() => endGame(), 0);
             return {
               ...prev,
               timeRemaining: 0,
@@ -262,10 +271,9 @@ const WordBuilderGame: React.FC = () => {
           };
         });
       }, 1000);
+      return () => untrack(id);
     }
-
-    return () => clearInterval(interval);
-  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame]);
+  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame, trackInterval, untrack, trackTimeout]);
 
   // Keyboard support
   useEffect(() => {
@@ -423,7 +431,7 @@ const WordBuilderGame: React.FC = () => {
                     className="flex justify-between border-b border-neutral-100 py-2 text-neutral-800"
                   >
                     <span>{word.word}</span>
-                    <span className="font-medium text-emerald-600">+{word.points}</span>
+                    <span className="bt-feedback-text-correct font-medium">+{word.points}</span>
                   </div>
                 ))}
               </div>
@@ -432,7 +440,7 @@ const WordBuilderGame: React.FC = () => {
             {feedback.show && (
               <p
                 className={`text-center text-sm font-medium ${
-                  feedback.type === 'success' ? 'text-emerald-600' : 'text-red-600'
+                  feedback.type === 'success' ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback.message}

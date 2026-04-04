@@ -1,12 +1,24 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useReducedMotion, animate } from 'framer-motion';
+import { gsap } from 'gsap';
 import { useGameResult } from '../GameResultProvider';
 import { useGameFlow } from '../game-engine/useGameFlow';
 import { GameContainer } from '../ui/GameContainer';
 import { AnimatedButton } from '../ui/AnimatedButton';
 import { ScorePopup } from '../ui/ScorePopup';
-import { btSpringSoft } from '../motion/presets';
+
+function usePrefersReducedMotion() {
+  const [reduceMotion, setReduceMotion] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduceMotion(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduceMotion;
+}
 
 const MAX_ROUNDS = 5;
 const FEEDBACK_MS = 1400;
@@ -34,7 +46,7 @@ const initialStats = (): RoundStats => ({
 const ReactionTimeGame: React.FC = () => {
   const navigate = useNavigate();
   const { saveResult } = useGameResult();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const flow = useGameFlow();
 
   const [roundIndex, setRoundIndex] = useState(0);
@@ -75,13 +87,73 @@ const ReactionTimeGame: React.FC = () => {
       setDisplayMs(summary.averageMs);
       return;
     }
-    const ctrl = animate(0, summary.averageMs, {
+    const obj = { v: 0 };
+    const tween = gsap.to(obj, {
+      v: summary.averageMs,
       duration: 0.85,
-      ease: [0.25, 0.1, 0.25, 1],
-      onUpdate: (v) => setDisplayMs(Math.round(v)),
+      ease: 'power2.out',
+      onUpdate: () => setDisplayMs(Math.round(obj.v)),
     });
-    return () => ctrl.stop();
+    return () => {
+      tween.kill();
+    };
   }, [summary?.averageMs, reduceMotion]);
+
+  const introRef = useRef<HTMLElement | null>(null);
+  const playRef = useRef<HTMLDivElement | null>(null);
+  const summaryWrapRef = useRef<HTMLDivElement | null>(null);
+  const summaryCardRef = useRef<HTMLDivElement | null>(null);
+  const signalRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = signalRef.current;
+    if (!el) return;
+    if (reduceMotion) {
+      gsap.killTweensOf(el);
+      gsap.set(el, { scale: subPhase === 'go' ? 1.08 : 1, opacity: 1, x: 0 });
+      return;
+    }
+    gsap.killTweensOf(el);
+    if (wrongPulse) {
+      gsap.fromTo(el, { x: 0 }, { x: [0, -5, 5, -3, 3, 0], duration: 0.4, ease: 'power2.out' });
+      return;
+    }
+    if (subPhase === 'wait') {
+      gsap.fromTo(
+        el,
+        { scale: 1, opacity: 0.92 },
+        { scale: 1.06, opacity: 1, repeat: -1, yoyo: true, duration: 1.8, ease: 'sine.inOut' }
+      );
+    } else if (subPhase === 'go') {
+      gsap.to(el, { scale: 1.08, opacity: 1, duration: 0.35, ease: 'power2.out' });
+    } else {
+      gsap.set(el, { scale: 1, opacity: 0.92, x: 0 });
+    }
+  }, [subPhase, wrongPulse, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    if (!sessionStarted && introRef.current) {
+      gsap.fromTo(introRef.current, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' });
+    }
+  }, [sessionStarted, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    if (sessionStarted && flow.phase !== 'finished' && playRef.current) {
+      gsap.fromTo(playRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+    }
+  }, [sessionStarted, flow.phase, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    if (sessionStarted && flow.phase === 'finished' && summaryWrapRef.current) {
+      gsap.fromTo(summaryWrapRef.current, { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power2.out' });
+    }
+    if (!reduceMotion && summaryCardRef.current && sessionStarted && flow.phase === 'finished') {
+      gsap.fromTo(summaryCardRef.current, { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'power2.out' });
+    }
+  }, [sessionStarted, flow.phase, summary, reduceMotion]);
 
   const finishSession = useCallback(() => {
     clearTimers();
@@ -264,15 +336,11 @@ const ReactionTimeGame: React.FC = () => {
         {announce}
       </div>
 
-      <AnimatePresence mode="wait">
+      <>
         {!sessionStarted && (
-          <motion.section
-            key="intro"
+          <section
+            ref={introRef}
             className="flex flex-1 flex-col items-center justify-center gap-8 px-2 text-center"
-            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-            animate={reduceMotion ? {} : { opacity: 1, y: 0 }}
-            exit={reduceMotion ? {} : { opacity: 0, y: -8 }}
-            transition={reduceMotion ? { duration: 0 } : btSpringSoft}
           >
             <div className="max-w-md space-y-4">
               <h2 className="text-3xl font-bold md:text-4xl" style={{ color: 'var(--bt-text)' }}>
@@ -289,16 +357,11 @@ const ReactionTimeGame: React.FC = () => {
             >
               Start
             </AnimatedButton>
-          </motion.section>
+          </section>
         )}
 
         {sessionStarted && flow.phase !== 'finished' && (
-          <motion.div
-            key="play"
-            className="relative h-full min-h-0 flex-1"
-            initial={reduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <div ref={playRef} className="relative h-full min-h-0 flex-1">
             <button
               type="button"
               onClick={handleArenaTap}
@@ -315,7 +378,8 @@ const ReactionTimeGame: React.FC = () => {
                     : 'Reaction training area'
               }
             >
-              <motion.div
+              <div
+                ref={signalRef}
                 className="flex h-[160px] w-[160px] shrink-0 items-center justify-center rounded-full md:h-[220px] md:w-[220px]"
                 style={{
                   background:
@@ -327,31 +391,11 @@ const ReactionTimeGame: React.FC = () => {
                       ? `0 0 48px var(--bt-success-glow)`
                       : '0 12px 40px rgba(0,0,0,0.35)',
                 }}
-                animate={
-                  reduceMotion
-                    ? {}
-                    : wrongPulse
-                      ? { x: [0, -5, 5, -3, 3, 0] }
-                      : subPhase === 'wait'
-                        ? { scale: [1, 1.06, 1], opacity: [0.92, 1, 0.92] }
-                        : subPhase === 'go'
-                          ? { scale: 1.08 }
-                          : { scale: 1 }
-                }
-                transition={
-                  reduceMotion
-                    ? { duration: 0 }
-                    : wrongPulse
-                      ? { duration: 0.4 }
-                      : subPhase === 'wait'
-                        ? { repeat: Infinity, duration: 1.8, ease: 'easeInOut' }
-                        : btSpringSoft
-                }
               >
                 <span className="text-5xl text-white md:text-6xl" aria-hidden>
                   {subPhase === 'go' ? '✓' : '◆'}
                 </span>
-              </motion.div>
+              </div>
 
               <p className="mt-10 text-[20px] font-semibold text-white" aria-hidden>
                 {subPhase === 'wait' && 'Wait…'}
@@ -363,23 +407,15 @@ const ReactionTimeGame: React.FC = () => {
                 <ScorePopup value={popupValue} show={showPopup} />
               </div>
             </button>
-          </motion.div>
+          </div>
         )}
 
         {sessionStarted && flow.phase === 'finished' && summary && (
-          <motion.div
-            key="summary"
+          <div
+            ref={summaryWrapRef}
             className="relative flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-black/35 px-4 backdrop-blur-[2px]"
-            initial={reduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: reduceMotion ? 0 : 0.25 }}
           >
-            <motion.div
-              className="bt-glass-dark w-full max-w-md p-8 text-center"
-              initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
-              animate={reduceMotion ? {} : { opacity: 1, scale: 1 }}
-              transition={btSpringSoft}
-            >
+            <div ref={summaryCardRef} className="bt-glass-dark w-full max-w-md p-8 text-center">
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-white/50">Done</p>
               <h2 className="mt-3 text-4xl font-semibold tabular-nums text-white md:text-5xl">
                 {summary.averageMs != null ? `${displayMs} ms` : '—'}
@@ -401,10 +437,10 @@ const ReactionTimeGame: React.FC = () => {
                   Hub
                 </AnimatedButton>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
 
       <style>{`
         .sr-only {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -50,6 +51,10 @@ const NumberSequencesGame: React.FC = () => {
     correct: false,
     message: ''
   });
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const generateArithmeticSequence = (difficulty: number): SequencePattern => {
     const start = Math.floor(Math.random() * 20) + 1;
@@ -113,7 +118,7 @@ const NumberSequencesGame: React.FC = () => {
 
   const generateSquareSequence = (difficulty: number): SequencePattern => {
     const start = Math.floor(Math.random() * 5) + 1;
-    const length = Math.min(4, 6);
+    const length = Math.min(3 + Math.floor(difficulty / 2), 6);
 
     const numbers = [];
     for (let i = 0; i < length; i++) {
@@ -245,6 +250,8 @@ const NumberSequencesGame: React.FC = () => {
   }, [gameStats.level]);
 
   const startGame = useCallback(() => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     gameStartTimeRef.current = Date.now();
     generateSequence();
     setGameStats(prev => ({
@@ -256,46 +263,47 @@ const NumberSequencesGame: React.FC = () => {
       correctAnswers: 0,
       currentStreak: 0
     }));
-  }, [generateSequence]);
+  }, [generateSequence, clearAll]);
 
   const endGame = useCallback(async () => {
-    // Use functional update to get latest state
     setGameStats(prev => {
-      // Don't end game if already ended
       if (prev.currentPhase === 'results') {
         return prev;
       }
-
-      const accuracy = prev.totalQuestions > 0
-        ? Math.round((prev.correctAnswers / prev.totalQuestions) * 100)
-        : 0;
-      const duration = gameStartTimeRef.current > 0
-        ? Math.round((Date.now() - gameStartTimeRef.current) / 1000)
-        : 0;
-
-      // Save game result with latest state
-      saveResult({
-        gameType: 'number-sequences',
-        score: prev.score,
-        level: prev.level,
-        accuracy: accuracy,
-        duration: duration,
-        details: {
-          correctAnswers: prev.correctAnswers,
-          totalQuestions: prev.totalQuestions,
-          bestStreak: prev.bestStreak,
-          currentStreak: prev.currentStreak,
-          finalLevel: prev.level
-        }
-      });
-
       return {
         ...prev,
         currentPhase: 'results',
         isGameActive: false
       };
     });
-  }, [saveResult]);
+  }, []);
+
+  useEffect(() => {
+    if (gameStats.currentPhase !== 'results' || hasSavedResultsRef.current) return;
+
+    hasSavedResultsRef.current = true;
+    const accuracy = gameStats.totalQuestions > 0
+      ? Math.round((gameStats.correctAnswers / gameStats.totalQuestions) * 100)
+      : 0;
+    const duration = gameStartTimeRef.current > 0
+      ? Math.round((Date.now() - gameStartTimeRef.current) / 1000)
+      : 0;
+
+    saveResultRef.current({
+      gameType: 'number-sequences',
+      score: gameStats.score,
+      level: gameStats.level,
+      accuracy,
+      duration,
+      details: {
+        correctAnswers: gameStats.correctAnswers,
+        totalQuestions: gameStats.totalQuestions,
+        bestStreak: gameStats.bestStreak,
+        currentStreak: gameStats.currentStreak,
+        finalLevel: gameStats.level
+      }
+    });
+  }, [gameStats]);
 
   const handleAnswerSubmit = () => {
     if (!currentSequence || !userAnswer.trim()) return;
@@ -333,8 +341,7 @@ const NumberSequencesGame: React.FC = () => {
         : `Incorrect. The answer was ${currentSequence.nextNumber}. Pattern: ${currentSequence.rule}`
     });
 
-    // Schedule next sequence or end game after feedback
-    setTimeout(() => {
+    trackTimeout(() => {
       setFeedback({ show: false, correct: false, message: '' });
       if (updatedTotalQuestions >= 10) {
         endGame();
@@ -354,6 +361,8 @@ const NumberSequencesGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     gameStartTimeRef.current = 0;
     setGameStats({
       score: 0,
@@ -371,19 +380,14 @@ const NumberSequencesGame: React.FC = () => {
     setFeedback({ show: false, correct: false, message: '' });
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => {
           const newTimeRemaining = prev.timeRemaining - 1;
 
-          // If time runs out, end the game
           if (newTimeRemaining <= 0) {
-            // Use setTimeout to ensure state update completes before calling endGame
-            setTimeout(() => endGame(), 0);
+            trackTimeout(() => endGame(), 0);
             return {
               ...prev,
               timeRemaining: 0,
@@ -397,14 +401,9 @@ const NumberSequencesGame: React.FC = () => {
           };
         });
       }, 1000);
+      return () => untrack(id);
     }
-
-    return () => {
-      if (interval) {
-        clearInterval(interval);
-      }
-    };
-  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame]);
+  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame, trackInterval, untrack, trackTimeout]);
 
   const accuracy = gameStats.totalQuestions > 0
     ? Math.round((gameStats.correctAnswers / gameStats.totalQuestions) * 100)
@@ -444,7 +443,7 @@ const NumberSequencesGame: React.FC = () => {
               <p className="mt-4 text-sm text-neutral-600 md:text-base">
                 Spot the pattern (arithmetic, geometric, Fib-ish, primes…) and enter the next number.
               </p>
-              <div className="mt-6 rounded-xl border border-black/10 bg-[#fafaf7] p-5 text-left text-sm text-neutral-700">
+              <div className="bt-panel-warm mt-6 rounded-xl border border-black/10 p-5 text-left text-sm text-neutral-700">
                 <p className="font-medium text-neutral-900">Level {gameStats.level}</p>
                 <p className="mt-2">
                   {gameStats.level === 1 && 'Simple arithmetic sequences.'}
@@ -565,7 +564,7 @@ const NumberSequencesGame: React.FC = () => {
               </p>
               <p
                 className={`mt-4 text-lg font-semibold ${
-                  feedback.correct ? 'text-emerald-600' : 'text-red-600'
+                  feedback.correct ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback.message}

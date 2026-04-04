@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -42,9 +43,13 @@ const SpeedMatchGame: React.FC = () => {
   const [timeLeft, setTimeLeft] = useState(60);
   const [countdown, setCountdown] = useState(3);
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const shapes = ['circle', 'square', 'triangle', 'diamond', 'star', 'heart'];
-  const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
+  const colors = ['#c97878', '#5aa8a0', '#5f8eb0', '#8fb89e', '#d4c48a', '#b898c4'];
   const symbolEmojis = ['🔥', '⭐', '💎', '🌟', '⚡', '🎯', '🚀', '💫', '🔮', '🎪'];
 
   const generateSymbol = useCallback((id: number): Symbol => {
@@ -76,7 +81,11 @@ const SpeedMatchGame: React.FC = () => {
       if (matchPositions.has(i)) {
         newSymbols.push({ ...target, id: i });
       } else {
-        newSymbols.push(generateSymbol(i));
+        let nonMatch: Symbol;
+        do {
+          nonMatch = generateSymbol(i);
+        } while (nonMatch.symbol === target.symbol);
+        newSymbols.push({ ...nonMatch, id: i });
       }
     }
 
@@ -84,13 +93,15 @@ const SpeedMatchGame: React.FC = () => {
   }, [generateSymbol, stats.level]);
 
   const startGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameState('countdown');
     setCountdown(3);
 
-    const countdownTimer = setInterval(() => {
+    const id = trackInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          clearInterval(countdownTimer);
+          untrack(id);
           setGameState('playing');
           setTimeLeft(60);
           generateGrid();
@@ -104,9 +115,7 @@ const SpeedMatchGame: React.FC = () => {
   const handleSymbolClick = (clickedSymbol: Symbol) => {
     if (!targetSymbol || gameState !== 'playing') return;
 
-    const isMatch = clickedSymbol.shape === targetSymbol.shape &&
-      clickedSymbol.color === targetSymbol.color &&
-      clickedSymbol.symbol === targetSymbol.symbol;
+    const isMatch = clickedSymbol.symbol === targetSymbol.symbol;
 
     if (isMatch) {
       const basePoints = 10 * stats.level;
@@ -173,39 +182,42 @@ const SpeedMatchGame: React.FC = () => {
       }
     }
 
-    setTimeout(() => {
+    trackTimeout(() => {
       setFeedback(null);
       generateGrid();
     }, 500);
   };
 
-  // Game timer
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
-      const timer = setTimeout(() => {
+      const id = trackTimeout(() => {
         setTimeLeft(prev => prev - 1);
       }, 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && gameState === 'playing') {
-      setGameState('results');
-
-      const accuracy = stats.matches + stats.misses > 0 ? Math.round((stats.matches / (stats.matches + stats.misses) * 100)) : 0;
-
-      saveResult({
-        gameType: 'speed-match',
-        score: stats.score,
-        accuracy: accuracy,
-        level: stats.level,
-        details: {
-          matches: stats.matches,
-          misses: stats.misses,
-          streak: stats.streak,
-          timeBonus: stats.timeBonus
-        },
-        duration: 60 - timeLeft
-      });
+      return () => untrack(id);
     }
-  }, [gameState, timeLeft, stats, saveResult]);
+    if (timeLeft === 0 && gameState === 'playing') {
+      setGameState('results');
+    }
+  }, [gameState, timeLeft, trackTimeout, untrack]);
+
+  useEffect(() => {
+    if (gameState !== 'results' || hasSavedResultsRef.current) return;
+    hasSavedResultsRef.current = true;
+    const accuracy = stats.matches + stats.misses > 0 ? Math.round((stats.matches / (stats.matches + stats.misses) * 100)) : 0;
+    saveResultRef.current({
+      gameType: 'speed-match',
+      score: stats.score,
+      accuracy,
+      level: stats.level,
+      details: {
+        matches: stats.matches,
+        misses: stats.misses,
+        streak: stats.streak,
+        timeBonus: stats.timeBonus
+      },
+      duration: 60 - timeLeft
+    });
+  }, [gameState, stats, timeLeft]);
 
   // Animate grid appearance
   useEffect(() => {
@@ -226,6 +238,8 @@ const SpeedMatchGame: React.FC = () => {
   }, [symbols, gameState]);
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameState('menu');
     setStats({
       score: 0,
@@ -320,7 +334,7 @@ const SpeedMatchGame: React.FC = () => {
             {feedback && (
               <p
                 className={`text-center text-lg font-medium ${
-                  feedback === 'correct' ? 'text-emerald-600' : 'text-red-600'
+                  feedback === 'correct' ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback === 'correct' ? 'Nice' : 'Keep going'}

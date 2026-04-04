@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -27,6 +28,7 @@ interface SynonymQuestion {
 const SynonymChallengeGame: React.FC = () => {
   const navigate = useNavigate();
   const { saveResult } = useGameResult();
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
@@ -179,12 +181,11 @@ const SynonymChallengeGame: React.FC = () => {
         : `Incorrect. "${currentQuestion.word}" means "${currentQuestion.correctSynonym}"`
     });
 
-    setTimeout(() => {
+    trackTimeout(() => {
       setFeedback({ show: false, correct: false, message: '' });
       setSelectedAnswer('');
 
-      // Generate next question or end game
-      if (gameStats.totalQuestions + 1 >= 15) { // 15 questions per level
+      if (gameStats.totalQuestions + 1 >= 15) {
         endGame();
       } else {
         setCurrentQuestion(generateQuestion());
@@ -203,6 +204,7 @@ const SynonymChallengeGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
     setGameStats({
       score: 0,
       level: 1,
@@ -219,18 +221,14 @@ const SynonymChallengeGame: React.FC = () => {
     setFeedback({ show: false, correct: false, message: '' });
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => {
           const newTimeRemaining = prev.timeRemaining - 1;
 
           if (newTimeRemaining <= 0) {
-            // Use setTimeout to ensure state update completes before calling endGame
-            setTimeout(() => endGame(), 0);
+            trackTimeout(() => endGame(), 0);
             return {
               ...prev,
               timeRemaining: 0,
@@ -244,10 +242,9 @@ const SynonymChallengeGame: React.FC = () => {
           };
         });
       }, 1000);
+      return () => untrack(id);
     }
-
-    return () => clearInterval(interval);
-  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame]);
+  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame, trackInterval, untrack, trackTimeout]);
 
   const accuracy = gameStats.totalQuestions > 0
     ? Math.round((gameStats.correctAnswers / gameStats.totalQuestions) * 100)
@@ -345,7 +342,7 @@ const SynonymChallengeGame: React.FC = () => {
             {feedback.show && (
               <p
                 className={`mt-4 text-center text-sm font-medium ${
-                  feedback.correct ? 'text-emerald-600' : 'text-red-600'
+                  feedback.correct ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback.message}

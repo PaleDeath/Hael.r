@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useGameResult } from '../GameResultProvider';
@@ -8,7 +8,8 @@ import { AnimatedButton } from '../ui/AnimatedButton';
 interface SequenceItem {
   id: number;
   color: string;
-  bgColor: string;
+  /** Editorial pad tone — maps to .bt-seq-* in brain-training.css */
+  toneClass: string;
   active: boolean;
 }
 
@@ -48,16 +49,28 @@ const SequenceRecallGame: React.FC = () => {
     correct: false,
     message: ''
   });
+  const timeoutIdsRef = useRef<number[]>([]);
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+
+  const clearSequenceTimeouts = useCallback(() => {
+    timeoutIdsRef.current.forEach(id => {
+      window.clearTimeout(id);
+      window.clearInterval(id);
+    });
+    timeoutIdsRef.current = [];
+  }, []);
 
   const colors: SequenceItem[] = [
-    { id: 0, color: 'Blue', bgColor: 'bg-blue-500', active: false },
-    { id: 1, color: 'Red', bgColor: 'bg-red-500', active: false },
-    { id: 2, color: 'Green', bgColor: 'bg-emerald-500', active: false },
-    { id: 3, color: 'Yellow', bgColor: 'bg-amber-400', active: false },
-    { id: 4, color: 'Purple', bgColor: 'bg-purple-500', active: false },
-    { id: 5, color: 'Orange', bgColor: 'bg-orange-500', active: false },
-    { id: 6, color: 'Pink', bgColor: 'bg-pink-500', active: false },
-    { id: 7, color: 'Indigo', bgColor: 'bg-indigo-500', active: false },
+    { id: 0, color: 'Blue', toneClass: 'bt-seq-0', active: false },
+    { id: 1, color: 'Red', toneClass: 'bt-seq-1', active: false },
+    { id: 2, color: 'Green', toneClass: 'bt-seq-2', active: false },
+    { id: 3, color: 'Yellow', toneClass: 'bt-seq-3', active: false },
+    { id: 4, color: 'Purple', toneClass: 'bt-seq-4', active: false },
+    { id: 5, color: 'Orange', toneClass: 'bt-seq-5', active: false },
+    { id: 6, color: 'Pink', toneClass: 'bt-seq-6', active: false },
+    { id: 7, color: 'Indigo', toneClass: 'bt-seq-7', active: false },
   ];
 
   const generateSequence = useCallback(() => {
@@ -74,6 +87,8 @@ const SequenceRecallGame: React.FC = () => {
   }, [gameStats.currentSequenceLength, gameStats.level]);
 
   const startGame = useCallback(() => {
+    clearSequenceTimeouts();
+    hasSavedResultsRef.current = false;
     generateSequence();
     setGameStats(prev => ({
       ...prev,
@@ -82,23 +97,22 @@ const SequenceRecallGame: React.FC = () => {
       timeRemaining: 0
     }));
     setCurrentShowIndex(0);
-  }, [generateSequence]);
+  }, [generateSequence, clearSequenceTimeouts]);
 
   const showSequence = useCallback(() => {
     if (currentShowIndex < sequence.length) {
-      // Show current item
-      setTimeout(() => {
+      const tid = window.setTimeout(() => {
         setCurrentShowIndex(prev => prev + 1);
-      }, 600); // Show each item for 600ms
+      }, 600);
+      timeoutIdsRef.current.push(tid);
     } else {
-      // Sequence shown, start input phase
       setGameStats(prev => ({
         ...prev,
         currentPhase: 'input',
-        timeRemaining: 10 + gameStats.level * 2
+        timeRemaining: 10 + prev.level * 2
       }));
     }
-  }, [currentShowIndex, sequence.length, gameStats.level]);
+  }, [currentShowIndex, sequence.length]);
 
   const handleColorClick = (colorId: number) => {
     if (gameStats.currentPhase !== 'input') return;
@@ -160,15 +174,18 @@ const SequenceRecallGame: React.FC = () => {
   const endGame = () => {
     setGameStats(prev => ({ ...prev, currentPhase: 'results' }));
     setFeedback({ show: false, correct: false, message: '' });
+  };
 
+  useEffect(() => {
+    if (gameStats.currentPhase !== 'results' || hasSavedResultsRef.current) return;
+    hasSavedResultsRef.current = true;
     const accuracy = gameStats.totalAttempts > 0
       ? Math.round((gameStats.correctSequences / gameStats.totalAttempts) * 100)
       : 0;
-
-    saveResult({
+    saveResultRef.current({
       gameType: 'sequence-recall',
       score: gameStats.score,
-      accuracy: accuracy,
+      accuracy,
       level: gameStats.level,
       details: {
         correctSequences: gameStats.correctSequences,
@@ -177,9 +194,11 @@ const SequenceRecallGame: React.FC = () => {
       },
       duration: 0
     });
-  };
+  }, [gameStats]);
 
   const resetGame = () => {
+    clearSequenceTimeouts();
+    hasSavedResultsRef.current = false;
     setGameStats({
       score: 0,
       level: 1,
@@ -197,6 +216,10 @@ const SequenceRecallGame: React.FC = () => {
     setFeedback({ show: false, correct: false, message: '' });
   };
 
+  useEffect(() => {
+    return () => clearSequenceTimeouts();
+  }, [clearSequenceTimeouts]);
+
   // Show sequence effect
   useEffect(() => {
     if (gameStats.currentPhase === 'show') {
@@ -204,22 +227,23 @@ const SequenceRecallGame: React.FC = () => {
     }
   }, [gameStats.currentPhase, showSequence]);
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.currentPhase === 'input' && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const intervalId = window.setInterval(() => {
         setGameStats(prev => ({
           ...prev,
           timeRemaining: prev.timeRemaining - 1
         }));
       }, 1000);
-    } else if (gameStats.timeRemaining === 0 && gameStats.currentPhase === 'input') {
+      timeoutIdsRef.current.push(intervalId);
+      return () => {
+        window.clearInterval(intervalId);
+        timeoutIdsRef.current = timeoutIdsRef.current.filter(i => i !== intervalId);
+      };
+    }
+    if (gameStats.timeRemaining === 0 && gameStats.currentPhase === 'input') {
       checkSequence(userSequence);
     }
-
-    return () => clearInterval(interval);
   }, [gameStats.currentPhase, gameStats.timeRemaining, userSequence]);
 
   const accuracy = gameStats.totalAttempts > 0
@@ -290,8 +314,8 @@ const SequenceRecallGame: React.FC = () => {
                   key={color.id}
                   className={`h-24 w-24 shrink-0 rounded-2xl transition-all duration-300 md:h-28 md:w-28 ${
                     currentShowIndex > 0 && sequence[currentShowIndex - 1] === color.id
-                      ? `${color.bgColor} scale-110 shadow-[0_0_28px_rgba(255,255,255,0.25)] ring-2 ring-white/40`
-                      : `${color.bgColor} opacity-25`
+                      ? `${color.toneClass} scale-110 shadow-[0_0_28px_rgba(255,255,255,0.25)] ring-2 ring-white/40`
+                      : `${color.toneClass} opacity-25`
                   }`}
                   aria-hidden
                 />
@@ -318,7 +342,7 @@ const SequenceRecallGame: React.FC = () => {
             </p>
             <div className="mt-5 flex min-h-10 flex-wrap items-center justify-center gap-2">
               {userSequence.map((colorId, index) => (
-                <div key={index} className={`h-8 w-8 rounded-full shadow-md ${colors[colorId].bgColor}`} />
+                <div key={index} className={`h-8 w-8 rounded-full shadow-md ${colors[colorId].toneClass}`} />
               ))}
               {Array.from({ length: sequence.length - userSequence.length }).map((_, index) => (
                 <div
@@ -334,7 +358,7 @@ const SequenceRecallGame: React.FC = () => {
                   type="button"
                   onClick={() => handleColorClick(color.id)}
                   aria-label={color.color}
-                  className={`h-24 w-24 rounded-2xl shadow-lg transition-transform hover:scale-105 active:scale-95 md:h-28 md:w-28 ${color.bgColor} ring-2 ring-white/15 hover:ring-white/35`}
+                  className={`h-24 w-24 rounded-2xl shadow-lg transition-transform hover:scale-105 active:scale-95 md:h-28 md:w-28 ${color.toneClass} ring-2 ring-white/15 hover:ring-white/35`}
                 />
               ))}
             </div>

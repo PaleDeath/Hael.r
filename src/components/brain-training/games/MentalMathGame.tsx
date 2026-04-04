@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -46,6 +47,10 @@ const MentalMathGame: React.FC = () => {
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   const [countdown, setCountdown] = useState(3);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const operations = [
     { symbol: '+', name: 'addition', minLevel: 1 },
@@ -60,21 +65,7 @@ const MentalMathGame: React.FC = () => {
 
   const endGame = useCallback(() => {
     setGameState('results');
-
-    saveResult({
-      gameType: 'mental-math',
-      score: stats.score,
-      level: stats.level,
-      accuracy: Math.round(accuracy),
-      duration: 90 - timeLeft,
-      details: {
-        correctAnswers: stats.correctAnswers,
-        totalAnswers: stats.totalAnswers,
-        streak: stats.streak,
-        avgReactionTime: Math.round(stats.avgResponseTime)
-      }
-    });
-  }, [stats, accuracy, timeLeft, saveResult]);
+  }, []);
 
   const generateProblem = useCallback((): MathProblem => {
     const availableOps = operations.filter(op => stats.level >= op.minLevel);
@@ -120,30 +111,23 @@ const MentalMathGame: React.FC = () => {
         question = `${num1} + ${num2}`;
     }
 
-    // Generate wrong answer options
-    const options: number[] = [answer];
-    while (options.length < 4) {
-      let wrongAnswer: number;
-
-      if (operation.symbol === '÷' && answer < 20) {
-        // For division, create close integer answers
-        wrongAnswer = answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1);
-      } else {
-        // For other operations, create answers within reasonable range
-        const variance = Math.max(Math.floor(answer * 0.3), 5);
-        wrongAnswer = answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * variance) + 1);
-      }
-
-      if (wrongAnswer > 0 && !options.includes(wrongAnswer)) {
-        options.push(wrongAnswer);
+    const optionSet = new Set<number>([answer]);
+    let guard = 0;
+    while (optionSet.size < 4 && guard < 80) {
+      guard += 1;
+      const variance = Math.max(Math.floor(Math.abs(answer) * 0.3), 3);
+      const offset = Math.floor(Math.random() * variance) + 1;
+      const wrong = answer + (Math.random() > 0.5 ? offset : -offset);
+      if (wrong >= 0 && !optionSet.has(wrong)) {
+        optionSet.add(wrong);
       }
     }
-
-    // Shuffle options
-    for (let i = options.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [options[i], options[j]] = [options[j], options[i]];
+    let fallback = 0;
+    while (optionSet.size < 4 && fallback < 500) {
+      if (!optionSet.has(fallback)) optionSet.add(fallback);
+      fallback += 1;
     }
+    const options = Array.from(optionSet).sort(() => Math.random() - 0.5);
 
     return {
       question,
@@ -185,10 +169,11 @@ const MentalMathGame: React.FC = () => {
   }, [generateProblem]);
 
   const startGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameState('countdown');
     setCountdown(3);
 
-    // Reset stats
     setStats({
       score: 0,
       correctAnswers: 0,
@@ -199,10 +184,10 @@ const MentalMathGame: React.FC = () => {
       responseTimes: []
     });
 
-    const countdownTimer = setInterval(() => {
+    const id = trackInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          clearInterval(countdownTimer);
+          untrack(id);
           setGameState('playing');
           setTimeLeft(90);
           nextProblem();
@@ -214,6 +199,8 @@ const MentalMathGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameState('menu');
     setStats({
       score: 0,
@@ -279,7 +266,7 @@ const MentalMathGame: React.FC = () => {
       }
 
       // Next problem after delay
-      setTimeout(() => {
+      trackTimeout(() => {
         nextProblem();
       }, 1000);
 
@@ -328,29 +315,45 @@ const MentalMathGame: React.FC = () => {
       }
 
       // Next problem after delay
-      setTimeout(() => {
+      trackTimeout(() => {
         nextProblem();
       }, 1500);
     }
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (gameState === 'playing' && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            endGame();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [gameState, timeLeft, endGame]);
+    if (gameState !== 'playing') return;
+    const id = trackInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          untrack(id);
+          endGame();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => untrack(id);
+  }, [gameState, endGame, trackInterval, untrack]);
+
+  useEffect(() => {
+    if (gameState !== 'results' || hasSavedResultsRef.current) return;
+    hasSavedResultsRef.current = true;
+    const acc = stats.totalAnswers > 0 ? (stats.correctAnswers / stats.totalAnswers) * 100 : 0;
+    saveResultRef.current({
+      gameType: 'mental-math',
+      score: stats.score,
+      level: stats.level,
+      accuracy: Math.round(acc),
+      duration: 90 - timeLeft,
+      details: {
+        correctAnswers: stats.correctAnswers,
+        totalAnswers: stats.totalAnswers,
+        streak: stats.streak,
+        avgReactionTime: Math.round(stats.avgResponseTime)
+      }
+    });
+  }, [gameState, stats, timeLeft]);
 
   const immersive = gameState !== 'menu';
 
@@ -414,7 +417,7 @@ const MentalMathGame: React.FC = () => {
             {feedback && (
               <div
                 className={`mb-2 mt-6 text-center text-lg font-medium ${
-                  feedback === 'correct' ? 'text-emerald-600' : 'text-red-600'
+                  feedback === 'correct' ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                 }`}
               >
                 {feedback === 'correct' ? 'Correct' : 'Incorrect'}

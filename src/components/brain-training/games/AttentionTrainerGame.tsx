@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { gsap } from 'gsap';
 import { RotateCcw } from 'lucide-react';
 import { useGameResult } from '../GameResultProvider';
 import { BrainGameShell } from '../ui/BrainGameShell';
@@ -44,9 +44,24 @@ function minDistanceOK(x: number, y: number, positions: { x: number; y: number }
   return positions.every((p) => Math.hypot(p.x - x, p.y - y) >= minDist);
 }
 
+function usePrefersReducedMotion() {
+  const [reduceMotion, setReduceMotion] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduceMotion(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduceMotion;
+}
+
 const AttentionTrainerGame: React.FC = () => {
   const { saveResult } = useGameResult();
-  const reduceMotion = useReducedMotion();
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const reduceMotion = usePrefersReducedMotion();
 
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
@@ -257,7 +272,7 @@ const AttentionTrainerGame: React.FC = () => {
             )
           : 0;
 
-      void saveResult({
+      void saveResultRef.current({
         gameType: 'attention-trainer',
         score: gameStats.score,
         accuracy,
@@ -279,7 +294,6 @@ const AttentionTrainerGame: React.FC = () => {
     gameStats.targetsFound,
     gameStats.targetsTotal,
     gameStats.incorrectClicks,
-    saveResult,
   ]);
 
   const accuracy =
@@ -311,33 +325,47 @@ const AttentionTrainerGame: React.FC = () => {
             : undefined,
     };
 
-    const tap = reduceMotion ? {} : { scale: 0.95 };
+    const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (reduceMotion) return;
+      gsap.to(e.currentTarget, { scale: 0.95, duration: 0.1, ease: 'power2.out' });
+    };
+    const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+      if (reduceMotion) return;
+      gsap.to(e.currentTarget, { scale: 1, duration: 0.2, ease: 'power2.out' });
+    };
 
     const onClick = () => handleItemClick(item);
 
     switch (item.shape) {
       case 'circle':
         return (
-          <motion.div
+          <div
             key={item.id}
+            role="presentation"
             style={{ ...baseStyle, borderRadius: '50%', backgroundColor: item.color }}
             onClick={onClick}
-            whileTap={tap}
+            onPointerDown={onPointerDown}
+            onPointerUp={onPointerUp}
+            onPointerLeave={onPointerUp}
           />
         );
       case 'square':
         return (
-          <motion.div
+          <div
             key={item.id}
+            role="presentation"
             style={{ ...baseStyle, backgroundColor: item.color }}
             onClick={onClick}
-            whileTap={tap}
+            onPointerDown={onPointerDown}
+            onPointerUp={onPointerUp}
+            onPointerLeave={onPointerUp}
           />
         );
       case 'triangle':
         return (
-          <motion.div
+          <div
             key={item.id}
+            role="presentation"
             style={{
               ...baseStyle,
               backgroundColor: 'transparent',
@@ -350,7 +378,9 @@ const AttentionTrainerGame: React.FC = () => {
               filter: item.clicked ? undefined : 'drop-shadow(0 3px 6px rgba(0,0,0,0.18))',
             }}
             onClick={onClick}
-            whileTap={tap}
+            onPointerDown={onPointerDown}
+            onPointerUp={onPointerUp}
+            onPointerLeave={onPointerUp}
           />
         );
       default:

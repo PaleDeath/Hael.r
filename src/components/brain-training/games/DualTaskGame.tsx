@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -55,6 +56,10 @@ const DualTaskGame: React.FC = () => {
     message: '',
     correct: false
   });
+  const hasSavedResultsRef = useRef(false);
+  const saveResultRef = useRef(saveResult);
+  saveResultRef.current = saveResult;
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const generatePrimaryTask = useCallback(() => {
     const taskTypes = ['math', 'visual', 'memory'];
@@ -99,12 +104,13 @@ const DualTaskGame: React.FC = () => {
         for (let i = 0; i < shapeCount; i++) {
           pattern.push(targetShape);
         }
-        // Add random shapes
+        // Add random shapes (always exact distractor count; re-roll if same as target)
         for (let i = 0; i < Math.floor(Math.random() * 8) + 2; i++) {
-          const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-          if (randomShape !== targetShape) {
-            pattern.push(randomShape);
-          }
+          let randomShape: string;
+          do {
+            randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+          } while (randomShape === targetShape);
+          pattern.push(randomShape);
         }
 
         question = `Count ${targetShape}: ${pattern.sort(() => 0.5 - Math.random()).join(' ')}`;
@@ -120,21 +126,28 @@ const DualTaskGame: React.FC = () => {
 
       case 'memory': {
         const words = ['cat', 'dog', 'bird', 'fish', 'lion', 'bear', 'wolf', 'deer'];
-        const wordSequence = [];
         const sequenceLength = Math.min(3 + Math.floor(gameStats.level / 2), 6);
-
-        for (let i = 0; i < sequenceLength; i++) {
-          wordSequence.push(words[Math.floor(Math.random() * words.length)]);
+        const shuffled = [...words];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
+        const wordSequence = shuffled.slice(0, sequenceLength);
 
         question = `Remember: ${wordSequence.join(', ')}. Which was first?`;
         correctAnswer = wordSequence[0];
 
-        const wrongWords = words.filter(w => w !== correctAnswer);
-        options = [
-          correctAnswer,
-          ...wrongWords.slice(0, 3)
-        ].sort(() => 0.5 - Math.random());
+        const wrongWords: string[] = [];
+        for (const w of shuffled.slice(sequenceLength)) {
+          if (wrongWords.length >= 3) break;
+          if (w !== correctAnswer) wrongWords.push(w);
+        }
+        while (wrongWords.length < 3) {
+          const w = words[Math.floor(Math.random() * words.length)];
+          if (w !== correctAnswer && !wrongWords.includes(w)) wrongWords.push(w);
+        }
+
+        options = [correctAnswer, ...wrongWords.slice(0, 3)].sort(() => 0.5 - Math.random());
         timeLimit = 12;
         break;
       }
@@ -178,6 +191,8 @@ const DualTaskGame: React.FC = () => {
   }, [generatePrimaryTask, generateSecondaryTask]);
 
   const startGame = useCallback(() => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     generateNewTasks();
     setGameStats(prev => ({
       ...prev,
@@ -188,7 +203,7 @@ const DualTaskGame: React.FC = () => {
       primaryTaskCorrect: 0,
       secondaryTaskCorrect: 0
     }));
-  }, [generateNewTasks]);
+  }, [generateNewTasks, clearAll]);
 
   const handlePrimaryTaskAnswer = (answer: string) => {
     if (!taskState) return;
@@ -209,7 +224,7 @@ const DualTaskGame: React.FC = () => {
       correct: isCorrect
     });
 
-    setTimeout(() => {
+    trackTimeout(() => {
       setFeedback({ show: false, message: '', correct: false });
       generateNewTasks();
     }, 1500);
@@ -244,6 +259,8 @@ const DualTaskGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
+    hasSavedResultsRef.current = false;
     setGameStats({
       score: 0,
       level: 1,
@@ -270,44 +287,46 @@ const DualTaskGame: React.FC = () => {
     }));
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => ({
           ...prev,
           timeRemaining: prev.timeRemaining - 1
         }));
       }, 1000);
-    } else if (gameStats.timeRemaining === 0 && gameStats.isGameActive) {
+      return () => untrack(id);
+    }
+    if (gameStats.timeRemaining === 0 && gameStats.isGameActive) {
       setGameStats(prev => ({
         ...prev,
         currentPhase: 'results',
         isGameActive: false
       }));
-
-      const primaryAccuracy = gameStats.totalTasks > 0
-        ? Math.round((gameStats.primaryTaskCorrect / gameStats.totalTasks) * 100)
-        : 0;
-
-      saveResult({
-        gameType: 'dual-task',
-        score: gameStats.score,
-        accuracy: primaryAccuracy, // Using primary task accuracy as main metric
-        level: gameStats.level,
-        details: {
-          primaryTaskCorrect: gameStats.primaryTaskCorrect,
-          secondaryTaskCorrect: gameStats.secondaryTaskCorrect,
-          totalTasks: gameStats.totalTasks
-        },
-        duration: (60 + (gameStats.level * 10)) - gameStats.timeRemaining
-      });
     }
+  }, [gameStats.isGameActive, gameStats.timeRemaining, trackInterval, untrack]);
 
-    return () => clearInterval(interval);
-  }, [gameStats.isGameActive, gameStats.timeRemaining, gameStats.score, gameStats.level, gameStats.primaryTaskCorrect, gameStats.secondaryTaskCorrect, gameStats.totalTasks, saveResult]);
+  useEffect(() => {
+    if (gameStats.currentPhase !== 'results' || hasSavedResultsRef.current) return;
+
+    hasSavedResultsRef.current = true;
+    const primaryAccuracy = gameStats.totalTasks > 0
+      ? Math.round((gameStats.primaryTaskCorrect / gameStats.totalTasks) * 100)
+      : 0;
+
+    saveResultRef.current({
+      gameType: 'dual-task',
+      score: gameStats.score,
+      accuracy: primaryAccuracy,
+      level: gameStats.level,
+      details: {
+        primaryTaskCorrect: gameStats.primaryTaskCorrect,
+        secondaryTaskCorrect: gameStats.secondaryTaskCorrect,
+        totalTasks: gameStats.totalTasks
+      },
+      duration: (60 + gameStats.level * 10) - gameStats.timeRemaining
+    });
+  }, [gameStats]);
 
   const primaryAccuracy = gameStats.totalTasks > 0
     ? Math.round((gameStats.primaryTaskCorrect / gameStats.totalTasks) * 100)
@@ -347,7 +366,7 @@ const DualTaskGame: React.FC = () => {
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-6 md:grid-cols-2">
           <div className="overflow-hidden rounded-2xl border border-black/8 bg-white shadow-[var(--bt-card-shadow)]">
-            <div className="border-b border-black/8 bg-[#fafaf7] px-4 py-3">
+            <div className="bt-panel-warm border-b border-black/8 px-4 py-3">
               <h3 className="text-lg font-semibold text-neutral-900">Primary</h3>
               <p className="text-sm text-neutral-600">Solve each prompt</p>
             </div>
@@ -359,7 +378,7 @@ const DualTaskGame: React.FC = () => {
                   <p className="mt-3 text-sm text-neutral-600">
                     Work the primary problems on the left while monitoring the counter on the right.
                   </p>
-                  <div className="mt-5 rounded-xl border border-black/10 bg-[#fafaf7] p-4 text-left text-sm text-neutral-700">
+                  <div className="bt-panel-warm mt-5 rounded-xl border border-black/10 p-4 text-left text-sm text-neutral-700">
                     <p className="font-medium text-neutral-900">Level {gameStats.level}</p>
                     <p className="mt-1">
                       {gameStats.level <= 2 && 'Basic load.'}
@@ -423,7 +442,7 @@ const DualTaskGame: React.FC = () => {
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-black/8 bg-white shadow-[var(--bt-card-shadow)]">
-            <div className="border-b border-black/8 bg-[#fafaf7] px-4 py-3">
+            <div className="bt-panel-warm border-b border-black/8 px-4 py-3">
               <h3 className="text-lg font-semibold text-neutral-900">Secondary</h3>
               <p className="text-sm text-neutral-600">Tap up to the target count</p>
             </div>

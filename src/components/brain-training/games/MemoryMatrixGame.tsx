@@ -1,12 +1,24 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { gsap } from 'gsap';
 import { useGameResult } from '../GameResultProvider';
 import { useGameFlow } from '../game-engine/useGameFlow';
 import { GameContainer } from '../ui/GameContainer';
 import { AnimatedButton } from '../ui/AnimatedButton';
 import { ProgressBar } from '../ui/ProgressBar';
-import { btSpringSoft } from '../motion/presets';
+
+function usePrefersReducedMotion() {
+  const [reduceMotion, setReduceMotion] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReduceMotion(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduceMotion;
+}
 
 type Phase = 'instructions' | 'memorize' | 'recall' | 'results';
 
@@ -55,7 +67,7 @@ const MemoryMatrixGame: React.FC = () => {
   const location = useLocation();
   const { saveResult } = useGameResult();
   const flow = useGameFlow();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
 
   const targetScore = (location.state as { targetScore?: number } | null)?.targetScore ?? 0;
 
@@ -91,6 +103,10 @@ const MemoryMatrixGame: React.FC = () => {
   const correctRef = useRef(0);
   const levelRef = useRef(1);
   const completedRef = useRef(0);
+  const gridWrapRef = useRef<HTMLDivElement | null>(null);
+  const introRef = useRef<HTMLElement | null>(null);
+  const playRef = useRef<HTMLDivElement | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
 
   scoreRef.current = score;
   correctRef.current = correctAnswers;
@@ -307,9 +323,60 @@ const MemoryMatrixGame: React.FC = () => {
 
   const cellSize = `min(max(44px, 14vw), 72px)`;
 
+  useEffect(() => {
+    if (reduceMotion || phase !== 'memorize') return;
+    const root = gridWrapRef.current;
+    if (!root) return;
+    const lit = root.querySelectorAll<HTMLElement>('[data-mem-lit="1"]');
+    lit.forEach((cell) => {
+      gsap.fromTo(cell, { scale: 1 }, { scale: 1.04, duration: 0.18, yoyo: true, repeat: 1, ease: 'power2.out' });
+    });
+  }, [seqRevealCount, phase, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion || !wrongFlash) return;
+    const root = gridWrapRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>('[data-wrong-pulse="1"]').forEach((cell) => {
+      gsap.fromTo(cell, { x: 0 }, { x: [-4, 4, -2, 2, 0], duration: 0.35, ease: 'power2.out' });
+    });
+  }, [wrongFlash, reduceMotion, userPattern]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    if (phase === 'instructions' && introRef.current) {
+      gsap.fromTo(introRef.current, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out' });
+    }
+  }, [phase, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    if ((phase === 'memorize' || phase === 'recall') && playRef.current) {
+      gsap.fromTo(playRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+    }
+  }, [phase, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    if (phase === 'results' && resultsRef.current) {
+      gsap.fromTo(resultsRef.current, { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'power2.out' });
+    }
+  }, [phase, reduceMotion, resultSummary]);
+
+  const handleCellPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (phase !== 'recall' || reduceMotion) return;
+    gsap.to(e.currentTarget, { scale: 0.94, duration: 0.1, ease: 'power2.out' });
+  };
+
+  const handleCellPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (phase !== 'recall' || reduceMotion) return;
+    gsap.to(e.currentTarget, { scale: 1, duration: 0.2, ease: 'power2.out' });
+  };
+
   const grid = (
     <div
-      className="mx-auto grid w-full max-w-[min(90vw,420px)] gap-2"
+      ref={gridWrapRef}
+      className="memory-matrix-grid mx-auto grid w-full max-w-[min(90vw,420px)] gap-2"
       style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}
     >
       {Array.from({ length: gridSize }, (_, i) =>
@@ -318,11 +385,14 @@ const MemoryMatrixGame: React.FC = () => {
           const showUser = phase === 'recall' && userPattern[i]?.[j];
           const highlight = showMem || showUser;
           return (
-            <motion.button
+            <button
               key={`${i}-${j}`}
               type="button"
               disabled={phase !== 'recall'}
               onClick={() => handleCellClick(i, j)}
+              onPointerDown={handleCellPointerDown}
+              onPointerUp={handleCellPointerUp}
+              onPointerLeave={handleCellPointerUp}
               aria-label={
                 phase === 'recall'
                   ? `Cell row ${i + 1} column ${j + 1}, ${userPattern[i]?.[j] ? 'selected' : 'not selected'}`
@@ -330,6 +400,8 @@ const MemoryMatrixGame: React.FC = () => {
               }
               className="min-h-11 min-w-11 rounded-2xl border-2 outline-none focus-visible:ring-2 focus-visible:ring-white/35 disabled:cursor-default data-[sel=yes]:border-white/40"
               data-sel={phase === 'recall' && userPattern[i]?.[j] ? 'yes' : undefined}
+              data-mem-lit={showMem ? '1' : '0'}
+              data-wrong-pulse={wrongFlash && showUser ? '1' : '0'}
               style={{
                 width: cellSize,
                 height: cellSize,
@@ -346,15 +418,6 @@ const MemoryMatrixGame: React.FC = () => {
                       : 'inset 0 1px 0 rgba(255,255,255,0.06)',
                 opacity: phase === 'recall' || showMem ? 1 : 0.88,
               }}
-              whileTap={phase === 'recall' && !reduceMotion ? { scale: 0.94 } : undefined}
-              animate={
-                wrongFlash && showUser
-                  ? { x: [0, -4, 4, 0] }
-                  : reduceMotion
-                    ? {}
-                    : { scale: showMem ? [1, 1.04, 1] : 1 }
-              }
-              transition={btSpringSoft}
             />
           );
         })
@@ -381,15 +444,11 @@ const MemoryMatrixGame: React.FC = () => {
         {announce}
       </div>
 
-      <AnimatePresence mode="wait">
+      <>
         {phase === 'instructions' && (
-          <motion.section
-            key="intro"
+          <section
+            ref={introRef}
             className="flex flex-1 flex-col items-center justify-center gap-8 px-2 text-center"
-            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={btSpringSoft}
           >
             <div className="max-w-md space-y-3">
               <h2 className="text-3xl font-bold" style={{ color: 'var(--bt-text)' }}>
@@ -400,16 +459,11 @@ const MemoryMatrixGame: React.FC = () => {
             <AnimatedButton onClick={startGame} aria-label="Start memory matrix game">
               Play
             </AnimatedButton>
-          </motion.section>
+          </section>
         )}
 
         {(phase === 'memorize' || phase === 'recall') && (
-          <motion.div
-            key="play"
-            className="flex flex-1 flex-col gap-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <div ref={playRef} className="flex flex-1 flex-col gap-4">
             {phase === 'memorize' && (
               <div className="px-4 pt-1">
                 <ProgressBar progress={memorizeProgress} aria-label="Memorize phase progress" variant="dark" />
@@ -426,17 +480,11 @@ const MemoryMatrixGame: React.FC = () => {
                 </AnimatedButton>
               </div>
             )}
-          </motion.div>
+          </div>
         )}
 
         {phase === 'results' && resultSummary && (
-          <motion.div
-            key="results"
-            className="flex flex-1 flex-col items-center justify-center gap-6"
-            initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={btSpringSoft}
-          >
+          <div ref={resultsRef} className="flex flex-1 flex-col items-center justify-center gap-6">
             <div className="bt-glass-dark w-full max-w-md p-8 text-center">
               <p className="text-xs uppercase tracking-[0.12em] text-white/50">Run complete</p>
               <p className="mt-3 text-4xl font-semibold tabular-nums text-white">{resultSummary.totalPoints}</p>
@@ -452,9 +500,9 @@ const MemoryMatrixGame: React.FC = () => {
                 </AnimatedButton>
               </div>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </>
 
       <style>{`
         .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}

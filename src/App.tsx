@@ -2,7 +2,7 @@
  * Lenis (desktop home): Diagnostic 6 — shorter duration + native touch so scroll
  * doesn’t feel sluggish vs CSS snap (snap removed in index.css).
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Lenis from '@studio-freight/lenis';
 import { About } from './components/About';
 import { CanvasContainer } from './components/CanvasContainer';
@@ -72,16 +72,23 @@ const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOu
     });
   }, []); // runs once — DesktopHomePage is never shown on mobile
 
-  /* Hide homepage under overlay; no CSS transitions — GSAP only */
-  useEffect(() => {
+  /* Hide page under overlay before paint; skip while wiping so exit animation owns visibility */
+  useLayoutEffect(() => {
     const el = scrollRootRef.current;
     if (!el) return;
-    if (isOverlayVisible) {
+    if (isOverlayVisible && !isFadingOut) {
       entranceRanRef.current = false;
       gsap.set(el, { autoAlpha: 0, pointerEvents: 'none' });
-    } else {
+    } else if (!isOverlayVisible) {
       gsap.set(el, { autoAlpha: 1, pointerEvents: 'auto' });
     }
+  }, [isOverlayVisible, isFadingOut]);
+
+  /* Undo any stuck nav styles if a prior build animated <nav> inside a mismatched gsap.context */
+  useLayoutEffect(() => {
+    if (isOverlayVisible) return;
+    const nav = document.querySelector('nav[aria-label="Site navigation"]');
+    if (nav) gsap.set(nav, { clearProps: 'opacity,transform' });
   }, [isOverlayVisible]);
 
   /* Choreography starts as overlay exits — content reads through the wipe */
@@ -103,15 +110,8 @@ const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOu
           0
         );
       }
-      const navEl = root.querySelector('nav[aria-label="Site navigation"]');
-      if (navEl) {
-        tl.fromTo(
-          navEl,
-          { y: -30, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out', overwrite: 'auto' },
-          0.15
-        );
-      }
+      // Navbar lives outside scrollRootRef; animating it inside this gsap.context
+      // leaves opacity/transform stuck when ctx.revert() runs (scope mismatch).
       const homeKids = root.querySelectorAll('#home > *');
       if (homeKids.length) {
         tl.fromTo(
@@ -179,10 +179,13 @@ const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOu
       </Helmet>
 
       {isOverlayVisible && <Overlay onEnter={handleEnter} isFadingOut={isFadingOut} />}
+      <div className="pointer-events-none relative z-[9500]">
+        <Navbar className="parallax-section" />
+      </div>
       <div
         ref={scrollRootRef}
         id="home-scroll-root"
-        className={isOverlayVisible ? 'pointer-events-none' : ''}
+        className={isOverlayVisible && !isFadingOut ? 'pointer-events-none' : ''}
         onClick={() => playSound('click')}
       >
         <div
@@ -190,7 +193,6 @@ const DesktopHomePage: React.FC<HomePageProps> = ({ isOverlayVisible, isFadingOu
         >
           <CanvasContainer />
         </div>
-        <Navbar className="parallax-section" />
         <Header className="parallax-section" />
         <Hero className="parallax-section" />
         <About className="parallax-section" />
@@ -296,7 +298,7 @@ const App: React.FC = () => {
 
   const handleEnter = () => {
     setIsFadingOut(true);
-    setTimeout(() => setIsOverlayVisible(false), 1000);
+    setTimeout(() => setIsOverlayVisible(false), 1180);
   };
 
   return (

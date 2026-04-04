@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RotateCcw } from 'lucide-react';
 import { useGameResult } from '../GameResultProvider';
+import { useTrackedTimers } from '../useTrackedTimers';
 import { BrainGameShell } from '../ui/BrainGameShell';
 import { AnimatedButton } from '../ui/AnimatedButton';
 
@@ -35,6 +36,7 @@ interface Question {
 const ReadingComprehensionGame: React.FC = () => {
   const navigate = useNavigate();
   const { saveResult } = useGameResult();
+  const { clearAll, trackTimeout, trackInterval, untrack } = useTrackedTimers();
 
   const [gameStats, setGameStats] = useState<GameStats>({
     score: 0,
@@ -252,17 +254,15 @@ const ReadingComprehensionGame: React.FC = () => {
       explanation: currentQuestion.explanation
     });
 
-    setTimeout(async () => {
+    trackTimeout(async () => {
       setFeedback({ show: false, correct: false, message: '', explanation: '' });
       setSelectedAnswer('');
 
-      // Move to next question or end game
       if (currentQuestionIndex + 1 < currentPassage.questions.length) {
         setCurrentQuestionIndex(prev => prev + 1);
-      } else if (gameStats.passagesRead + 1 >= 3) { // 3 passages per level
+      } else if (gameStats.passagesRead + 1 >= 3) {
         endGame();
       } else {
-        // Load next passage (with AI adaptation based on performance)
         try {
           setLoadingAI(true);
           const nextPassage = await getPassageForLevel(gameStats.level);
@@ -290,6 +290,7 @@ const ReadingComprehensionGame: React.FC = () => {
   };
 
   const resetGame = () => {
+    clearAll();
     setGameStats({
       score: 0,
       level: 1,
@@ -307,18 +308,14 @@ const ReadingComprehensionGame: React.FC = () => {
     setFeedback({ show: false, correct: false, message: '', explanation: '' });
   };
 
-  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-
     if (gameStats.isGameActive && gameStats.timeRemaining > 0) {
-      interval = setInterval(() => {
+      const id = trackInterval(() => {
         setGameStats(prev => {
           const newTimeRemaining = prev.timeRemaining - 1;
 
           if (newTimeRemaining <= 0) {
-            // Use setTimeout to ensure state update completes before calling endGame
-            setTimeout(() => endGame(), 0);
+            trackTimeout(() => endGame(), 0);
             return {
               ...prev,
               timeRemaining: 0,
@@ -332,10 +329,9 @@ const ReadingComprehensionGame: React.FC = () => {
           };
         });
       }, 1000);
+      return () => untrack(id);
     }
-
-    return () => clearInterval(interval);
-  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame]);
+  }, [gameStats.isGameActive, gameStats.timeRemaining, endGame, trackInterval, untrack, trackTimeout]);
 
   const accuracy = gameStats.totalQuestions > 0
     ? Math.round((gameStats.correctAnswers / gameStats.totalQuestions) * 100)
@@ -385,7 +381,7 @@ const ReadingComprehensionGame: React.FC = () => {
               <p className="mt-4 text-sm text-neutral-600 md:text-base">
                 Read each passage, then answer questions. Pace and accuracy both feed your score.
               </p>
-              <div className="mt-6 rounded-xl border border-black/10 bg-[#fafaf7] p-5 text-left text-sm text-neutral-700">
+              <div className="bt-panel-warm mt-6 rounded-xl border border-black/10 p-5 text-left text-sm text-neutral-700">
                 <p className="font-medium text-neutral-900">Level {gameStats.level}</p>
                 <p className="mt-2">
                   {gameStats.level === 1 && 'Straightforward passages.'}
@@ -475,12 +471,12 @@ const ReadingComprehensionGame: React.FC = () => {
             {feedback.show && (
               <div
                 className={`mx-auto mt-8 max-w-2xl rounded-2xl border bg-white p-6 text-left shadow-sm ${
-                  feedback.correct ? 'border-emerald-200' : 'border-red-200'
+                  feedback.correct ? 'bt-feedback-border-correct' : 'bt-feedback-border-wrong'
                 }`}
               >
                 <p
                   className={`text-center font-semibold ${
-                    feedback.correct ? 'text-emerald-700' : 'text-red-700'
+                    feedback.correct ? 'bt-feedback-text-correct' : 'bt-feedback-text-wrong'
                   }`}
                 >
                   {feedback.message}
